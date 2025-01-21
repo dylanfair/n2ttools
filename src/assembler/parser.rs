@@ -74,7 +74,7 @@ fn first_pass_parse_line(
     (current_line + 1, free_symbols_pointer)
 }
 
-fn second_pass_parse_line(line: &str) -> String {
+fn second_pass_parse_line(line: &str, symbol_table: &mut BTreeMap<String, u32>) -> String {
     // First check for moments we skip
     if line.starts_with("//") | line.is_empty() {
         return String::from("");
@@ -84,6 +84,7 @@ fn second_pass_parse_line(line: &str) -> String {
     let cleaned_line = line.trim().to_string();
     if cleaned_line.starts_with("@") {
         let cleaned_value = cleaned_line.replace("@", "");
+
         // if a number, just move on as its an A-instruction
         let mut symbol_chars = cleaned_value.chars();
         let first_char = symbol_chars.next().expect("wouldn't be blank");
@@ -104,4 +105,104 @@ fn second_pass_parse_line(line: &str) -> String {
         return (current_line, free_symbols_pointer);
     }
     (current_line + 1, free_symbols_pointer)
+}
+
+fn parse_a_instruction(instruction: String) -> String {
+    // 15 bit value of instruction
+    // given a number, convert to bits then pad with 0s?
+}
+
+fn parse_c_instruction(instruction: String) -> String {
+    // dest = comp ; jump
+
+    // we have a dest
+    let mut dest_b = String::from("000");
+    let mut jump_b = String::from("000");
+    let mut comp_b = String::from("0000000");
+    if instruction.contains("=") {
+        let (dest, comp) = instruction.split_once("=").unwrap();
+        dest_b = dest_binary(dest.trim());
+        comp_b = comp_binary(comp.trim());
+    }
+    if instruction.contains(";") {
+        let (comp, jump) = instruction.split_once(";").unwrap();
+        comp_b = comp_binary(comp.trim());
+        jump_b = jump_binary(jump.trim());
+    }
+
+    let c_instruction = format!("111{comp_b}{dest_b}{jump_b}");
+
+    return c_instruction;
+}
+
+fn comp_binary(comp: &str) -> String {
+    let answer = match comp {
+        "0" => "0101010",
+        "1" => "0111111",
+        "-1" => "0111010",
+        "D" => "0001100",
+        "A" => "0110000",
+        "M" => "1110000",
+        "!D" => "0001101",
+        "!A" => "0110001",
+        "!M" => "1110001",
+        "-D" => "0001111",
+        "-A" => "0110011",
+        "-M" => "1110011",
+        "D+1" => "0011111",
+        "A+1" => "0110111",
+        "M+1" => "1110111",
+        "D-1" => "0001110",
+        "A-1" => "0110010",
+        "M-1" => "1110010",
+        "D+A" => "0000010",
+        "D+M" => "1000010",
+        "D-A" => "0010011",
+        "D-M" => "1010011",
+        "A-D" => "0000111",
+        "M-D" => "1000111",
+        "D&A" => "0000000",
+        "D&M" => "1000000",
+        "D|A" => "0010101",
+        "D|M" => "1010101",
+        _ => {
+            panic!()
+        }
+    };
+
+    return answer.to_string();
+}
+
+fn dest_binary(dest: &str) -> String {
+    let answer = match dest {
+        "M" => "001",
+        "D" => "010",
+        "DM" => "011",
+        "A" => "100",
+        "AM" => "101",
+        "AD" => "110",
+        "ADM" => "111",
+        _ => {
+            panic!()
+        }
+    };
+
+    return answer.to_string();
+}
+
+fn jump_binary(jump: &str) -> String {
+    let answer = match jump {
+        "JGT" => "001",
+        "JEQ" => "010",
+        "JGE" => "011",
+        "JLT" => "100",
+        "JNE" => "101",
+        "JLE" => "110",
+        "JMP" => "111",
+        _ => {
+            panic!()
+        }
+    };
+
+    return answer.to_string();
 }
