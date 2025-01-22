@@ -1,9 +1,11 @@
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 use crate::assembler::parser::parse_asm_file;
 use crate::assembler::symbol_table::create_symbol_table;
 
-pub fn run_assembler<P>(file: P)
+pub fn run_assembler<P>(file: P, debug: bool)
 where
     P: AsRef<Path> + std::fmt::Debug,
 {
@@ -14,7 +16,14 @@ where
     let symbol_table = create_symbol_table();
 
     let output_path = create_output_path(&file);
-    let output = parse_asm_file(&file, symbol_table);
+
+    let output = parse_asm_file(&file, symbol_table, debug);
+    if debug {
+        println!("Output is:\n{}", output);
+    }
+
+    let mut file = File::create(output_path).unwrap();
+    file.write_all(output.as_bytes()).unwrap();
 }
 
 fn check_filetype<P>(file: &P) -> bool
@@ -60,8 +69,18 @@ mod tests {
     //     run_assembler("../nand2tetris/nand2tetris/projects/6/add/Add.asm");
     // }
 
+    // #[test]
+    // fn run_assm_max() {
+    //     run_assembler("../nand2tetris/nand2tetris/projects/6/max/Max.asm", false);
+    // }
+
     #[test]
-    fn run_assm_() {
-        run_assembler("../nand2tetris/nand2tetris/projects/6/max/Max.asm");
+    fn run_assm_rect() {
+        run_assembler("../nand2tetris/nand2tetris/projects/6/rect/Rect.asm", true);
     }
+
+    // #[test]
+    // fn run_assm_pong() {
+    //     run_assembler("../nand2tetris/nand2tetris/projects/6/pong/Pong.asm", true);
+    // }
 }

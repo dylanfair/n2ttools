@@ -8,8 +8,8 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Assembler { file }) => {
-            run_assembler(file);
+        Some(Commands::Assembler { file, debug }) => {
+            run_assembler(file, debug);
         }
         Some(Commands::Compiler { file }) => {
             todo!();
@@ -31,6 +31,9 @@ enum Commands {
     Assembler {
         #[arg()]
         file: String,
+
+        #[arg(long)]
+        debug: bool,
     },
     Compiler {
         #[arg()]

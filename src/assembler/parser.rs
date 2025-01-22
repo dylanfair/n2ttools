@@ -1,115 +1,133 @@
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::prelude::*;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-pub fn parse_asm_file<P>(file: &P, mut symbol_table: BTreeMap<String, u32>)
+pub fn parse_asm_file<P>(file: &P, mut symbol_table: BTreeMap<String, u32>, debug: bool) -> String
 where
     P: AsRef<Path> + std::fmt::Debug,
 {
-    println!("{:?}", file);
     let input_contents =
         File::open(file).expect("At this point we should know we have a .asm file");
 
-    let second_pass = input_contents.try_clone().expect("Hopefully this works?");
+    let mut second_pass = input_contents.try_clone().expect("Hopefully this works?");
     let mut current_line = 0;
-    let mut free_symbols_pointer = 16;
 
     // Parse lines here for symbol table
     for line in io::BufReader::new(input_contents)
         .lines()
         .map_while(Result::ok)
     {
-        (current_line, free_symbols_pointer) =
-            first_pass_parse_line(&line, &mut symbol_table, current_line, free_symbols_pointer);
-        println!("{} {}", current_line, line);
+        if debug {
+            println!("{} {}", current_line, line);
+        }
+        current_line = first_pass_parse_line(&line, &mut symbol_table, current_line);
     }
-    println!("{:?}", symbol_table);
+    if debug {
+        println!("{:?}", symbol_table);
+    }
 
     // now parse for translations using symbol table
+    let mut output = String::new();
+    #[allow(unused_assignments)]
+    let mut parse_output = String::new();
+    let mut free_symbols_pointer = 16;
+
+    second_pass.rewind().unwrap();
     for line in io::BufReader::new(second_pass)
         .lines()
         .map_while(Result::ok)
     {
-        (current_line, free_symbols_pointer) =
-            parse_line(&line, &mut symbol_table, current_line, free_symbols_pointer);
-        println!("{}", current_line);
+        (parse_output, free_symbols_pointer) =
+            second_pass_parse_line(&line, &mut symbol_table, free_symbols_pointer);
+
+        output += &parse_output;
     }
+    if debug {
+        println!("{:?}", symbol_table);
+    }
+
+    output
 }
 
 fn first_pass_parse_line(
     line: &str,
     symbol_table: &mut BTreeMap<String, u32>,
     current_line: u64,
+) -> u64 {
+    // First check for moments we skip
+    let cleaned_line = line.trim().to_string();
+    if cleaned_line.starts_with("//") | cleaned_line.is_empty() {
+        return current_line;
+    }
+
+    // label declarations
+    if cleaned_line.starts_with("(") & !symbol_table.contains_key(&cleaned_line) {
+        let mut insert = cleaned_line.strip_suffix(")").unwrap();
+        insert = insert.strip_prefix("(").unwrap();
+        symbol_table.insert(insert.to_string(), current_line as u32);
+        return current_line;
+    }
+    current_line + 1
+}
+
+fn second_pass_parse_line(
+    line: &str,
+    symbol_table: &mut BTreeMap<String, u32>,
     mut free_symbols_pointer: u32,
-) -> (u64, u32) {
+) -> (String, u32) {
     // First check for moments we skip
-    if line.starts_with("//") | line.is_empty() {
-        return (current_line, free_symbols_pointer);
+    let mut output = String::from("");
+    let cleaned_line = line.trim().to_string();
+    if cleaned_line.starts_with("//") | cleaned_line.is_empty() | cleaned_line.starts_with("(") {
+        return (output, free_symbols_pointer);
     }
 
     // Now parse for symbols
-    let cleaned_line = line.trim().to_string();
     if cleaned_line.starts_with("@") {
-        let cleaned_value = cleaned_line.replace("@", "");
-        // if a number, just move on as its an A-instruction
-        let mut symbol_chars = cleaned_value.chars();
-        let first_char = symbol_chars.next().expect("wouldn't be blank");
-        if first_char.is_numeric() {
-            return (current_line + 1, free_symbols_pointer);
-        }
-
-        // if not a number, we insert to symbol table with a value
-        symbol_table
-            .entry(cleaned_value)
-            .or_insert(free_symbols_pointer);
-        free_symbols_pointer += 1
+        (output, free_symbols_pointer) =
+            parse_a_instruction(cleaned_line, symbol_table, free_symbols_pointer);
+        (output, free_symbols_pointer)
+    } else {
+        output = parse_c_instruction(cleaned_line);
+        (output, free_symbols_pointer)
     }
-
-    // label declarations
-    if cleaned_line.starts_with("(") & !symbol_table.contains_key(&cleaned_line) {
-        symbol_table.insert(cleaned_line, current_line as u32 + 1);
-        return (current_line, free_symbols_pointer);
-    }
-    (current_line + 1, free_symbols_pointer)
 }
 
-fn second_pass_parse_line(line: &str, symbol_table: &mut BTreeMap<String, u32>) -> String {
-    // First check for moments we skip
-    if line.starts_with("//") | line.is_empty() {
-        return String::from("");
-    }
-
-    // Now parse for symbols
-    let cleaned_line = line.trim().to_string();
-    if cleaned_line.starts_with("@") {
-        let cleaned_value = cleaned_line.replace("@", "");
-
-        // if a number, just move on as its an A-instruction
-        let mut symbol_chars = cleaned_value.chars();
-        let first_char = symbol_chars.next().expect("wouldn't be blank");
-        if first_char.is_numeric() {
-            return (current_line + 1, free_symbols_pointer);
-        }
-
-        // if not a number, we insert to symbol table with a value
-        symbol_table
-            .entry(cleaned_value)
-            .or_insert(free_symbols_pointer);
-        free_symbols_pointer += 1
-    }
-
-    // label declarations
-    if cleaned_line.starts_with("(") & !symbol_table.contains_key(&cleaned_line) {
-        symbol_table.insert(cleaned_line, current_line as u32 + 1);
-        return (current_line, free_symbols_pointer);
-    }
-    (current_line + 1, free_symbols_pointer)
-}
-
-fn parse_a_instruction(instruction: String) -> String {
+fn parse_a_instruction(
+    instruction: String,
+    symbol_table: &mut BTreeMap<String, u32>,
+    mut free_symbols_pointer: u32,
+) -> (String, u32) {
     // 15 bit value of instruction
     // given a number, convert to bits then pad with 0s?
+    // Now parse for symbols
+    let cleaned_line = instruction.trim().to_string();
+    let cleaned_value = cleaned_line.replace("@", "");
+
+    // if a number, just move on as its an A-instruction
+    let mut symbol_chars = cleaned_value.chars();
+    let first_char = symbol_chars.next().expect("wouldn't be blank");
+    if first_char.is_numeric() {
+        // transform number to binary and return
+        let number = cleaned_value.parse::<u32>().unwrap();
+        return (format!("{number:016b}\n").to_string(), free_symbols_pointer);
+    }
+
+    if !symbol_table.contains_key(&cleaned_value) {
+        symbol_table.insert(cleaned_value.clone(), free_symbols_pointer);
+        free_symbols_pointer += 1;
+    }
+
+    let symbol_value = symbol_table
+        .get(&cleaned_value)
+        .expect("After initial parse we should never not see our symbol");
+    // transform number to bianry
+    (
+        format!("{symbol_value:016b}\n").to_string(),
+        free_symbols_pointer,
+    )
 }
 
 fn parse_c_instruction(instruction: String) -> String {
@@ -130,9 +148,9 @@ fn parse_c_instruction(instruction: String) -> String {
         jump_b = jump_binary(jump.trim());
     }
 
-    let c_instruction = format!("111{comp_b}{dest_b}{jump_b}");
+    let c_instruction = format!("111{comp_b}{dest_b}{jump_b}\n");
 
-    return c_instruction;
+    c_instruction
 }
 
 fn comp_binary(comp: &str) -> String {
@@ -170,7 +188,7 @@ fn comp_binary(comp: &str) -> String {
         }
     };
 
-    return answer.to_string();
+    answer.to_string()
 }
 
 fn dest_binary(dest: &str) -> String {
@@ -178,6 +196,7 @@ fn dest_binary(dest: &str) -> String {
         "M" => "001",
         "D" => "010",
         "DM" => "011",
+        "MD" => "011",
         "A" => "100",
         "AM" => "101",
         "AD" => "110",
@@ -187,7 +206,7 @@ fn dest_binary(dest: &str) -> String {
         }
     };
 
-    return answer.to_string();
+    answer.to_string()
 }
 
 fn jump_binary(jump: &str) -> String {
@@ -204,5 +223,5 @@ fn jump_binary(jump: &str) -> String {
         }
     };
 
-    return answer.to_string();
+    answer.to_string()
 }
