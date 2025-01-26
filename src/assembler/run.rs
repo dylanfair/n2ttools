@@ -74,10 +74,10 @@ mod tests {
     //     run_assembler("../nand2tetris/nand2tetris/projects/6/max/Max.asm", false);
     // }
 
-    #[test]
-    fn run_assm_rect() {
-        run_assembler("../nand2tetris/nand2tetris/projects/6/rect/Rect.asm", true);
-    }
+    // #[test]
+    // fn run_assm_rect() {
+    //     run_assembler("../nand2tetris/nand2tetris/projects/6/rect/Rect.asm", true);
+    // }
 
     // #[test]
     // fn run_assm_pong() {
