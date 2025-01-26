@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 use crate::vm::parser::parse_vm_file;
@@ -13,6 +15,12 @@ where
     let output_path = create_output_path(&file);
 
     let output = parse_vm_file(&file, debug);
+    if debug {
+        println!("Output is:\n{}", output);
+    }
+
+    let mut file = File::create(output_path).unwrap();
+    file.write_all(output.as_bytes()).unwrap();
 }
 
 fn check_filetype<P>(file: &P) -> bool
@@ -56,7 +64,7 @@ mod tests {
     #[test]
     fn test_run_vm() {
         run_vm(
-            "../nand2tetris/nand2tetris/projects/7/StackArithmetic/SimpleAdd.vm",
+            "../nand2tetris/nand2tetris/projects/7/StackArithmetic/SimpleAdd/SimpleAdd.vm",
             true,
         );
     }

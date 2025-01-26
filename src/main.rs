@@ -29,7 +29,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Runs the assembler on your file of choice
+    /// Takes in a .asm file and returns a .hack file
     Assembler {
         #[arg()]
         file: String,
@@ -37,6 +37,7 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
+    /// Takes in a .vm file and returns a .asm file
     Vm {
         #[arg()]
         file: String,
