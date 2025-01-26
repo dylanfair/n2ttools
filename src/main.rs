@@ -1,8 +1,10 @@
 use clap::{Parser, Subcommand};
 
 mod assembler;
+mod vm;
 
 use assembler::run::run_assembler;
+use vm::run::run_vm;
 
 fn main() {
     let cli = Cli::parse();
@@ -11,8 +13,8 @@ fn main() {
         Some(Commands::Assembler { file, debug }) => {
             run_assembler(file, debug);
         }
-        Some(Commands::Compiler { file }) => {
-            todo!();
+        Some(Commands::Vm { file, debug }) => {
+            run_vm(file, debug);
         }
         None => {}
     }
@@ -35,8 +37,11 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
-    Compiler {
+    Vm {
         #[arg()]
         file: String,
+
+        #[arg(long)]
+        debug: bool,
     },
 }
