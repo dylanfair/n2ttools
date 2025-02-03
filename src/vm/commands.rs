@@ -19,12 +19,10 @@ impl FromStr for CommandType {
     type Err = CommandParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "push" {
-            return Ok(Self::Push);
+        match s {
+            "push" => Ok(Self::Push),
+            "pop" => Ok(Self::Pop),
+            _ => Ok(Self::Arithmetic),
         }
-        if s == "pop" {
-            return Ok(Self::Pop);
-        }
-        return Ok(Self::Arithmetic);
     }
 }
