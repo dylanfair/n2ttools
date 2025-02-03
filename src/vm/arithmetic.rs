@@ -1,170 +1,181 @@
-pub fn handle_arithmetic(tokens: Vec<&str>) -> String {
-    let arithmetic = tokens[0];
-    let mut output = match arithmetic {
-        "add" => add(),
-        "sub" => sub(),
-        "neg" => neg(),
-        "eq" => eq(),
-        "gt" => gt(),
-        "lt" => lt(),
-        "and" => and(),
-        "or" => or(),
-        "not" => not(),
-        _ => panic!("ran into a different arithmetic"),
-    };
+use crate::vm::parser::Parser;
 
-    // then move up one of the stack
-    output += "@SP\n";
-    output += "M=M+1\n";
-    output
-}
+impl Parser {
+    pub fn handle_arithmetic(&mut self, tokens: Vec<&str>) {
+        let arithmetic = tokens[0];
+        match arithmetic {
+            "add" => self.add(),
+            "sub" => self.sub(),
+            "neg" => self.neg(),
+            "eq" => self.eq(),
+            "gt" => self.gt(),
+            "lt" => self.lt(),
+            "and" => self.and(),
+            "or" => self.or(),
+            "not" => self.not(),
+            _ => panic!("ran into a different arithmetic"),
+        };
 
-fn get_y() -> String {
-    // go down stack and set first value to D (y)
-    let mut output = String::from("@SP\n");
-    output += "M=M-1\n";
-    output += "@SP\n";
-    output += "A=M\n";
-    output += "D=M\n";
-    output
-}
+        // then move up one of the stack
+        self.output += "@SP\n";
+        self.output += "M=M+1\n";
+    }
 
-fn get_values() -> String {
-    let mut output = get_y();
+    fn get_y(&mut self) {
+        // go down stack and set first value to D (y)
+        self.output += "@SP\n";
+        self.output += "M=M-1\n";
+        self.output += "@SP\n";
+        self.output += "A=M\n";
+        self.output += "D=M\n";
+    }
 
-    // now go down again and prep for x
-    output += "@SP\n";
-    output += "M=M-1\n";
-    output += "A=M\n";
-    output
-}
+    fn get_values(&mut self) {
+        self.get_y();
 
-fn true_or_false() -> String {
-    // True
-    let mut output = String::from("(TRUE)\n");
+        // now go down again and prep for x
+        self.output += "@SP\n";
+        self.output += "M=M-1\n";
+        self.output += "A=M\n";
+    }
 
-    output += "@R15\n";
-    output += "M=D\n";
+    fn true_or_false(&mut self) {
+        // True
+        self.output += &format!("(TRUE_{})\n", self.return_caller_number);
+        self.output += "@0\n";
+        self.output += "D=A\n";
+        self.output += "D=D-1\n";
+        self.output += "@SP\n";
+        self.output += "A=M\n";
+        self.output += "M=D\n";
 
-    output += "@-1\n";
-    output += "D=A\n";
-    output += "@SP\n";
-    output += "A=M\n";
-    output += "M=D\n";
+        self.output += &format!("@RETURN_ADDRESS_{}\n", self.return_caller_number);
+        self.output += "0;JMP\n";
 
-    output += "@R15\n";
-    output += "0;JMP\n";
+        // False
+        self.output += &format!("(FALSE_{})\n", self.return_caller_number);
+        self.output += "@0\n";
+        self.output += "D=A\n";
+        self.output += "@SP\n";
+        self.output += "A=M\n";
+        self.output += "M=D\n";
 
-    // False
-    output += "(FALSE)\n";
+        self.output += &format!("@RETURN_ADDRESS_{}\n", self.return_caller_number);
+        self.output += "0;JMP\n";
+    }
 
-    output += "@R15\n";
-    output += "M=D\n";
+    fn add(&mut self) {
+        self.get_values();
 
-    output += "@0\n";
-    output += "D=A\n";
-    output += "@SP\n";
-    output += "A=M\n";
-    output += "M=D\n";
+        // now add values
+        // x + y
+        // A is set to current stack and we replace value
+        self.output += "M=D+M\n";
+    }
 
-    output += "@R15\n";
-    output += "0;JMP\n";
+    fn sub(&mut self) {
+        self.get_values();
 
-    output
-}
+        // now sub values
+        // x - y
+        self.output += "M=M-D\n";
+    }
 
-fn add() -> String {
-    let mut output = get_values();
+    fn neg(&mut self) {
+        self.get_y();
 
-    // now add values
-    // x + y
-    output += "M=D+M\n";
-    output
-}
+        // negative y
+        self.output += "M=-D\n";
+    }
 
-fn sub() -> String {
-    let mut output = get_values();
+    fn eq(&mut self) {
+        // subroutine calling sequence
+        // @returnaddress
+        // D=A
+        // @subroutine
+        // 0;JMP
+        //
+        // suboutine ; D contains return address
+        // subroutine entry code
+        // @STK
+        // AM=M+1 ; bumps the stack pointer, also setting A to new SP value
+        // M=D ; write the return address into the stack
+        // *** Now do subroutine work (i.e. check for true or false)
+        // subroutine exit code
+        // @STK
+        // AM=M-1
+        // A=M
+        // 0;JMP
+        self.get_values();
+        // A is set to current stack
+        // D holds y
+        // M now holds X
 
-    // now sub values
-    // x - y
-    output += "M=M-D\n";
-    output
-}
+        // do comparison
+        self.output += "D=D-M\n";
+        self.output += &format!("@TRUE_{}\n", self.return_caller_number);
+        self.output += "D;JEQ\n";
+        self.output += &format!("@FALSE_{}\n", self.return_caller_number);
+        self.output += "0;JMP\n";
 
-fn neg() -> String {
-    let mut output = get_y();
+        self.true_or_false();
+        self.output += &format!("(RETURN_ADDRESS_{})\n", self.return_caller_number);
 
-    // negative y
-    output += "M=-D\n";
-    output
-}
+        // up our return_caller_number
+        self.return_caller_number += 1;
+    }
 
-fn eq() -> String {
-    let mut output = get_values();
+    fn gt(&mut self) {
+        self.get_values();
+        // D holds y
+        // M now holds X
 
-    // set a return address
-    output += "@returnaddress\n";
-    output += "D=A\n";
+        self.output += "D=M-D\n";
+        self.output += &format!("@TRUE_{}\n", self.return_caller_number);
+        self.output += "D;JGT\n";
+        self.output += &format!("@FALSE_{}\n", self.return_caller_number);
+        self.output += "0;JMP\n";
 
-    output += "@TRUE\n";
-    output += "D-M;JEQ\n";
-    output += "@FALSE\n";
-    output += "0;JMP\n";
+        self.true_or_false();
+        self.output += &format!("(RETURN_ADDRESS_{})\n", self.return_caller_number);
 
-    output += &true_or_false();
+        // up our return_caller_number
+        self.return_caller_number += 1;
+    }
 
-    output
-}
+    fn lt(&mut self) {
+        self.get_values();
+        // D holds y
+        // M now holds X
 
-fn gt() -> String {
-    let mut output = get_values();
+        self.output += "D=M-D\n";
+        self.output += &format!("@TRUE_{}\n", self.return_caller_number);
+        self.output += "D;JLT\n";
+        self.output += &format!("@FALSE_{}\n", self.return_caller_number);
+        self.output += "0;JMP\n";
 
-    output += "@returnaddress\n";
-    output += "D=A\n";
+        self.true_or_false();
+        self.output += &format!("(RETURN_ADDRESS_{})\n", self.return_caller_number);
 
-    output += "@TRUE\n";
-    output += "D-M;JGT\n";
-    output += "@FALSE\n";
-    output += "0;JMP\n";
+        // up our return_caller_number
+        self.return_caller_number += 1;
+    }
 
-    output += &true_or_false();
+    fn and(&mut self) {
+        self.get_values();
 
-    output
-}
+        self.output += "M=D&M\n";
+    }
 
-fn lt() -> String {
-    let mut output = get_values();
+    fn or(&mut self) {
+        self.get_values();
 
-    output += "@returnaddress\n";
-    output += "D=A\n";
+        self.output += "M=D|M\n";
+    }
 
-    output += "@TRUE\n";
-    output += "D-M;JLT\n";
-    output += "@FALSE\n";
-    output += "0;JMP\n";
+    fn not(&mut self) {
+        self.get_y();
 
-    output += &true_or_false();
-
-    output
-}
-
-fn and() -> String {
-    let mut output = get_values();
-
-    output += "M=D&M\n";
-    output
-}
-
-fn or() -> String {
-    let mut output = get_values();
-
-    output += "M=D|M\n";
-    output
-}
-
-fn not() -> String {
-    let mut output = get_y();
-
-    output += "M=!D\n";
-    output
+        self.output += "M=!D\n";
+    }
 }
