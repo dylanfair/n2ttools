@@ -68,6 +68,15 @@ impl Parser {
         }
     }
 
+    fn pop_stack(&mut self) {
+        // first grab the top stack value
+        self.output += "@SP\n";
+        self.output += "M=M-1\n";
+        self.output += "@SP\n";
+        self.output += "A=M\n";
+        self.output += "D=M\n"; // now stored in D
+    }
+
     fn handle_pop(&mut self, tokens: Vec<&str>) {
         // LCL = RAM[SP--]
         // @SP
@@ -83,19 +92,54 @@ impl Parser {
         let segment = tokens[1];
         let value = tokens[2];
 
-        let location = segment_to_location(segment);
+        if segment == "pointer" {
+            self.pop_stack();
 
-        // first grab the top stack value
-        self.output += "@SP\n";
-        self.output += "M=M-1\n";
-        self.output += "@SP\n";
-        self.output += "A=M\n";
-        self.output += "D=M\n"; // now stored in D
+            if value == "0" {
+                self.output += "@THIS\n";
+            } else {
+                self.output += "@THAT\n";
+            };
+            self.output += "M=D\n"; // push popped value to pointer
+        } else if segment == "this" {
+            self.output += "@THIS\n";
+            self.output += "D=M\n";
+            self.output += &format!("@{}\n", value);
+            self.output += "D=D+A\n";
+            self.output += "@R15\n";
+            self.output += "M=D\n";
 
-        let segment_base = self.get_segment_base(&location);
-        let index = segment_base + value.parse::<u32>().unwrap();
-        self.output += &format!("@{}\n", index);
-        self.output += "M=D\n";
+            self.pop_stack();
+
+            self.output += "@R15\n";
+            self.output += "A=M\n";
+            self.output += "M=D\n";
+        } else if segment == "that" {
+            self.output += "@THAT\n";
+            self.output += "D=M\n";
+            self.output += &format!("@{}\n", value);
+            self.output += "D=D+A\n";
+            self.output += "@R15\n";
+            self.output += "M=D\n";
+
+            self.pop_stack();
+
+            self.output += "@R15\n";
+            self.output += "A=M\n";
+            self.output += "M=D\n";
+        } else if segment == "static" {
+            self.pop_stack();
+
+            self.output += &format!("@static.{}\n", value);
+            self.output += "M=D\n";
+        } else {
+            let location = segment_to_location(segment);
+            let index = self.get_segment_base(&location) + value.parse::<u32>().unwrap();
+
+            self.pop_stack();
+            self.output += &format!("@{}\n", index);
+            self.output += "M=D\n";
+        };
     }
 
     fn handle_push(&mut self, tokens: Vec<&str>) {
@@ -117,17 +161,47 @@ impl Parser {
         let segment = tokens[1];
         let value = tokens[2];
 
-        let location = segment_to_location(segment);
-
-        if location == "SP" {
-            self.output += &format!("@{}\n", value);
-            self.output += "D=A\n";
-        } else {
-            // first grab the segment value
-            let segment_base = self.get_segment_base(&location);
-            let index = segment_base + value.parse::<u32>().unwrap();
-            self.output += &format!("@{}\n", index);
-            self.output += "D=M\n"; // now stored in D
+        match segment {
+            "constant" => {
+                self.output += &format!("@{}\n", value);
+                self.output += "D=A\n";
+            }
+            "pointer" => {
+                if value == "0" {
+                    self.output += "@THIS\n";
+                } else {
+                    self.output += "@THAT\n";
+                };
+                self.output += "D=M\n"; // now stored in D
+            }
+            "this" => {
+                self.output += "@THIS\n";
+                self.output += "D=M\n";
+                self.output += &format!("@{}\n", value);
+                self.output += "D=D+A\n";
+                self.output += "A=D\n";
+                self.output += "D=M\n";
+            }
+            "that" => {
+                self.output += "@THAT\n";
+                self.output += "D=M\n";
+                self.output += &format!("@{}\n", value);
+                self.output += "D=D+A\n";
+                self.output += "A=D\n";
+                self.output += "D=M\n";
+            }
+            "static" => {
+                self.output += &format!("@static.{}\n", value);
+                self.output += "D=M\n";
+            }
+            _ => {
+                // first grab the segment value
+                let location = segment_to_location(segment);
+                let segment_base = self.get_segment_base(&location);
+                let index = segment_base + value.parse::<u32>().unwrap();
+                self.output += &format!("@{}\n", index);
+                self.output += "D=M\n"; // now stored in D
+            }
         }
         // Then push to stack
         self.output += "@SP\n";
@@ -142,8 +216,6 @@ impl Parser {
             "SP" => panic!("Shouldn't see SP here"),
             "LCL" => self.local_base,
             "ARG" => self.arg_base,
-            "THIS" => self.this_base,
-            "THAT" => self.that_base,
             "TEMP" => self.temp_base,
             _ => panic!("Found an unknown location: {}", location),
         }
@@ -152,11 +224,8 @@ impl Parser {
 
 fn segment_to_location(segment: &str) -> String {
     match segment {
-        "constant" => "SP".to_string(),
         "local" => "LCL".to_string(),
         "argument" => "ARG".to_string(),
-        "this" => "THIS".to_string(),
-        "that" => "THAT".to_string(),
         "temp" => "TEMP".to_string(),
         _ => panic!("Found an unknown segment: {}", segment),
     }
