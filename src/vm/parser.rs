@@ -254,15 +254,6 @@ impl Parser {
     }
 }
 
-fn segment_to_location(segment: &str) -> String {
-    match segment {
-        "local" => "LCL".to_string(),
-        "argument" => "ARG".to_string(),
-        "temp" => "TEMP".to_string(),
-        _ => panic!("Found an unknown segment: {}", segment),
-    }
-}
-
 pub fn parse_vm_file<P>(file: P, debug: bool) -> String
 where
     P: AsRef<Path> + std::fmt::Debug,
