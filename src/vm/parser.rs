@@ -127,18 +127,44 @@ impl Parser {
             self.output += "@R15\n";
             self.output += "A=M\n";
             self.output += "M=D\n";
+        } else if segment == "local" {
+            self.output += "@LCL\n";
+            self.output += "D=M\n";
+            self.output += &format!("@{}\n", value);
+            self.output += "D=D+A\n";
+            self.output += "@R15\n";
+            self.output += "M=D\n";
+
+            self.pop_stack();
+
+            self.output += "@R15\n";
+            self.output += "A=M\n";
+            self.output += "M=D\n";
+        } else if segment == "argument" {
+            self.output += "@ARG\n";
+            self.output += "D=M\n";
+            self.output += &format!("@{}\n", value);
+            self.output += "D=D+A\n";
+            self.output += "@R15\n";
+            self.output += "M=D\n";
+
+            self.pop_stack();
+
+            self.output += "@R15\n";
+            self.output += "A=M\n";
+            self.output += "M=D\n";
         } else if segment == "static" {
             self.pop_stack();
 
             self.output += &format!("@static.{}\n", value);
             self.output += "M=D\n";
-        } else {
-            let location = segment_to_location(segment);
-            let index = self.get_segment_base(&location) + value.parse::<u32>().unwrap();
-
+        } else if segment == "temp" {
             self.pop_stack();
-            self.output += &format!("@{}\n", index);
+
+            self.output += &format!("@{}\n", self.temp_base + value.parse::<u32>().unwrap());
             self.output += "M=D\n";
+        } else {
+            panic!("Found an unknown segment: {}", segment);
         };
     }
 
@@ -190,17 +216,33 @@ impl Parser {
                 self.output += "A=D\n";
                 self.output += "D=M\n";
             }
+            "local" => {
+                self.output += "@LCL\n";
+                self.output += "D=M\n";
+                self.output += &format!("@{}\n", value);
+                self.output += "D=D+A\n";
+                self.output += "A=D\n";
+                self.output += "D=M\n";
+            }
+            "argument" => {
+                self.output += "@ARG\n";
+                self.output += "D=M\n";
+                self.output += &format!("@{}\n", value);
+                self.output += "D=D+A\n";
+                self.output += "A=D\n";
+                self.output += "D=M\n";
+            }
             "static" => {
                 self.output += &format!("@static.{}\n", value);
                 self.output += "D=M\n";
             }
-            _ => {
-                // first grab the segment value
-                let location = segment_to_location(segment);
-                let segment_base = self.get_segment_base(&location);
-                let index = segment_base + value.parse::<u32>().unwrap();
+            "temp" => {
+                let index = self.temp_base + value.parse::<u32>().unwrap();
                 self.output += &format!("@{}\n", index);
                 self.output += "D=M\n"; // now stored in D
+            }
+            _ => {
+                panic!("Found an unknown segment: {}", segment);
             }
         }
         // Then push to stack
@@ -209,16 +251,6 @@ impl Parser {
         self.output += "M=D\n";
         self.output += "@SP\n";
         self.output += "M=M+1\n";
-    }
-
-    fn get_segment_base(&mut self, location: &str) -> u32 {
-        match location {
-            "SP" => panic!("Shouldn't see SP here"),
-            "LCL" => self.local_base,
-            "ARG" => self.arg_base,
-            "TEMP" => self.temp_base,
-            _ => panic!("Found an unknown location: {}", location),
-        }
     }
 }
 
