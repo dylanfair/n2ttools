@@ -39,7 +39,7 @@ enum Commands {
     },
     /// Takes in a .vm file and returns a .asm file
     Vm {
-        #[arg()]
+        #[arg(default_value = ".")]
         file: String,
 
         #[arg(long)]
