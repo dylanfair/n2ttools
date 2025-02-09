@@ -17,7 +17,7 @@ where
     }
 
     let mut output = String::new();
-    for file in files.unwrap() {
+    for file in files.expect("Should have something after .is_none() check") {
         let parsed_output = parse_vm_file(file, debug);
         if debug {
             println!("Output is:\n{}", parsed_output);
