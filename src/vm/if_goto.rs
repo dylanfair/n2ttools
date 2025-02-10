@@ -12,7 +12,7 @@ impl Parser {
 
         // check if value is true
         // i.e. D == 0
-        self.output += &format!("@{}\n", label);
+        self.output += &format!("@{}.{}${}\n", self.file_name, self.function_name, label);
         self.output += "D;JNE\n";
     }
 }
