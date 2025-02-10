@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -87,14 +88,27 @@ fn create_output_path<P>(file: P) -> PathBuf
 where
     P: AsRef<Path> + std::fmt::Debug,
 {
-    let mut output_file = PathBuf::from(file.as_ref());
-    output_file.set_extension("asm");
-    let output_file = output_file
-        .file_name()
-        .expect("Already checked from file_type");
+    let mut input_file = PathBuf::from(file.as_ref());
 
-    println!("Saving outputs to {:?}", output_file);
-    PathBuf::from(output_file)
+    let output_file = if input_file.is_dir() {
+        if input_file == PathBuf::from(".") {
+            let dir = env::current_dir().expect("Should be in some directory");
+            let parent_name = dir.file_name().unwrap().to_str().unwrap();
+
+            let output = format!("{}/{}.asm", dir.display(), parent_name);
+            PathBuf::from(output)
+        } else {
+            let parent_name = input_file.file_name().unwrap().to_str().unwrap();
+
+            let output = format!("{}/{}.asm", input_file.display(), parent_name);
+            PathBuf::from(output)
+        }
+    } else {
+        input_file.set_extension("asm");
+        input_file
+    };
+
+    output_file
 }
 
 #[cfg(test)]

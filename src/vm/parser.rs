@@ -64,11 +64,14 @@ impl Parser {
             CommandType::Push => self.handle_push(tokens),
             CommandType::Pop => self.handle_pop(tokens),
             CommandType::Arithmetic => self.handle_arithmetic(tokens),
+            CommandType::Label => self.handle_label(tokens),
+            CommandType::If => self.handle_if_goto(tokens),
+            CommandType::Goto => self.handle_goto(tokens),
             _ => (),
         }
     }
 
-    fn pop_stack(&mut self) {
+    pub fn pop_stack(&mut self) {
         // first grab the top stack value
         self.output += "@SP\n";
         self.output += "M=M-1\n";

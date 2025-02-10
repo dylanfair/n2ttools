@@ -22,6 +22,9 @@ impl FromStr for CommandType {
         match s {
             "push" => Ok(Self::Push),
             "pop" => Ok(Self::Pop),
+            "label" => Ok(Self::Label),
+            "if-goto" => Ok(Self::If),
+            "goto" => Ok(Self::Goto),
             _ => Ok(Self::Arithmetic),
         }
     }
