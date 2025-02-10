@@ -5,15 +5,6 @@ use std::str::FromStr;
 
 use crate::vm::commands::CommandType;
 
-pub struct Parser {
-    pub output: String,
-    pub general_return_number: u64,
-    pub caller_return_number: u64,
-    temp_base: u32,
-    pub file_name: String,
-    pub function_name: String,
-}
-
 pub fn set_up_stack() -> String {
     let mut stack = String::from("@256\nD=A\n@SP\nM=D\n");
     stack += "@300\nD=A\n@LCL\nM=D\n";
@@ -21,6 +12,15 @@ pub fn set_up_stack() -> String {
     stack += "@3000\nD=A\n@THIS\nM=D\n";
     stack += "@3010\nD=A\n@THAT\nM=D\n";
     stack
+}
+
+pub struct Parser {
+    pub output: String,
+    pub general_return_number: u64,
+    pub caller_return_number: u64,
+    temp_base: u32,
+    pub file_name: String,
+    pub function_name: String,
 }
 
 impl Parser {
@@ -54,7 +54,7 @@ impl Parser {
             CommandType::Goto => self.handle_goto(tokens),
             CommandType::Function => self.handle_function(tokens),
             CommandType::Return => self.handle_return(tokens),
-            _ => (),
+            CommandType::Call => self.handle_call(tokens),
         }
     }
 

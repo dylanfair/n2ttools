@@ -17,7 +17,8 @@ where
         return;
     }
 
-    let mut output = set_up_stack();
+    // let mut output = set_up_stack();
+    let mut output = String::new();
     for file in files.expect("Should have something after .is_none() check") {
         let parsed_output = parse_vm_file(file, debug);
         if debug {
