@@ -7,46 +7,31 @@ use crate::vm::commands::CommandType;
 
 pub struct Parser {
     pub output: String,
-    pub return_caller_number: u64,
-    local_base: u32,
-    arg_base: u32,
-    this_base: u32,
-    that_base: u32,
+    pub general_return_number: u64,
+    pub caller_return_number: u64,
     temp_base: u32,
+    pub file_name: String,
+    pub function_name: String,
 }
 
-fn set_up_stack(
-    stack_pointer: u32,
-    local_base: u32,
-    arg_base: u32,
-    this_base: u32,
-    that_base: u32,
-) -> String {
-    let mut stack = format!("@{}\nD=A\n@SP\nM=D\n", stack_pointer);
-    stack += &format!("@{}\nD=A\n@LCL\nM=D\n", local_base);
-    stack += &format!("@{}\nD=A\n@ARG\nM=D\n", arg_base);
-    stack += &format!("@{}\nD=A\n@THIS\nM=D\n", this_base);
-    stack += &format!("@{}\nD=A\n@THAT\nM=D\n", that_base);
+pub fn set_up_stack() -> String {
+    let mut stack = String::from("@256\nD=A\n@SP\nM=D\n");
+    stack += "@300\nD=A\n@LCL\nM=D\n";
+    stack += "@400\nD=A\n@ARG\nM=D\n";
+    stack += "@3000\nD=A\n@THIS\nM=D\n";
+    stack += "@3010\nD=A\n@THAT\nM=D\n";
     stack
 }
 
 impl Parser {
-    fn new(
-        stack_pointer: u32,
-        local_base: u32,
-        arg_base: u32,
-        this_base: u32,
-        that_base: u32,
-        temp_base: u32,
-    ) -> Self {
+    fn new(temp_base: u32, file_name: String) -> Self {
         Parser {
-            return_caller_number: 0,
-            output: set_up_stack(stack_pointer, local_base, arg_base, this_base, that_base),
-            local_base,
-            arg_base,
-            this_base,
-            that_base,
+            general_return_number: 0,
+            caller_return_number: 0,
+            output: String::new(),
             temp_base,
+            file_name,
+            function_name: String::new(),
         }
     }
 
@@ -67,6 +52,8 @@ impl Parser {
             CommandType::Label => self.handle_label(tokens),
             CommandType::If => self.handle_if_goto(tokens),
             CommandType::Goto => self.handle_goto(tokens),
+            CommandType::Function => self.handle_function(tokens),
+            CommandType::Return => self.handle_return(tokens),
             _ => (),
         }
     }
@@ -159,7 +146,7 @@ impl Parser {
         } else if segment == "static" {
             self.pop_stack();
 
-            self.output += &format!("@static.{}\n", value);
+            self.output += &format!("@{}.{}\n", self.file_name, value);
             self.output += "M=D\n";
         } else if segment == "temp" {
             self.pop_stack();
@@ -236,7 +223,7 @@ impl Parser {
                 self.output += "D=M\n";
             }
             "static" => {
-                self.output += &format!("@static.{}\n", value);
+                self.output += &format!("@{}.{}\n", self.file_name, value);
                 self.output += "D=M\n";
             }
             "temp" => {
@@ -264,9 +251,16 @@ where
     if debug {
         println!("Parsing {}", file.as_ref().display());
     }
+    let file_name = file
+        .as_ref()
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
     let input_contents = File::open(file).expect("At this point we should know we have a .vm file");
 
-    let mut parser = Parser::new(256, 300, 400, 3000, 3010, 5);
+    let mut parser = Parser::new(5, file_name);
 
     for line in io::BufReader::new(input_contents)
         .lines()

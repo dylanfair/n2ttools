@@ -41,7 +41,7 @@ impl Parser {
 
     fn true_or_false(&mut self) {
         // True
-        self.output += &format!("(TRUE_{})\n", self.return_caller_number);
+        self.output += &format!("(TRUE_{})\n", self.general_return_number);
         self.output += "@0\n";
         self.output += "D=A\n";
         self.output += "D=D-1\n";
@@ -49,18 +49,18 @@ impl Parser {
         self.output += "A=M\n";
         self.output += "M=D\n";
 
-        self.output += &format!("@RETURN_ADDRESS_{}\n", self.return_caller_number);
+        self.output += &format!("@RETURN_ADDRESS_{}\n", self.general_return_number);
         self.output += "0;JMP\n";
 
         // False
-        self.output += &format!("(FALSE_{})\n", self.return_caller_number);
+        self.output += &format!("(FALSE_{})\n", self.general_return_number);
         self.output += "@0\n";
         self.output += "D=A\n";
         self.output += "@SP\n";
         self.output += "A=M\n";
         self.output += "M=D\n";
 
-        self.output += &format!("@RETURN_ADDRESS_{}\n", self.return_caller_number);
+        self.output += &format!("@RETURN_ADDRESS_{}\n", self.general_return_number);
         self.output += "0;JMP\n";
     }
 
@@ -113,16 +113,16 @@ impl Parser {
 
         // do comparison
         self.output += "D=D-M\n";
-        self.output += &format!("@TRUE_{}\n", self.return_caller_number);
+        self.output += &format!("@TRUE_{}\n", self.general_return_number);
         self.output += "D;JEQ\n";
-        self.output += &format!("@FALSE_{}\n", self.return_caller_number);
+        self.output += &format!("@FALSE_{}\n", self.general_return_number);
         self.output += "0;JMP\n";
 
         self.true_or_false();
-        self.output += &format!("(RETURN_ADDRESS_{})\n", self.return_caller_number);
+        self.output += &format!("(RETURN_ADDRESS_{})\n", self.general_return_number);
 
-        // up our return_caller_number
-        self.return_caller_number += 1;
+        // up our general_return_number
+        self.general_return_number += 1;
     }
 
     fn gt(&mut self) {
@@ -131,16 +131,16 @@ impl Parser {
         // M now holds X
 
         self.output += "D=M-D\n";
-        self.output += &format!("@TRUE_{}\n", self.return_caller_number);
+        self.output += &format!("@TRUE_{}\n", self.general_return_number);
         self.output += "D;JGT\n";
-        self.output += &format!("@FALSE_{}\n", self.return_caller_number);
+        self.output += &format!("@FALSE_{}\n", self.general_return_number);
         self.output += "0;JMP\n";
 
         self.true_or_false();
-        self.output += &format!("(RETURN_ADDRESS_{})\n", self.return_caller_number);
+        self.output += &format!("(RETURN_ADDRESS_{})\n", self.general_return_number);
 
-        // up our return_caller_number
-        self.return_caller_number += 1;
+        // up our general_return_number
+        self.general_return_number += 1;
     }
 
     fn lt(&mut self) {
@@ -149,16 +149,16 @@ impl Parser {
         // M now holds X
 
         self.output += "D=M-D\n";
-        self.output += &format!("@TRUE_{}\n", self.return_caller_number);
+        self.output += &format!("@TRUE_{}\n", self.general_return_number);
         self.output += "D;JLT\n";
-        self.output += &format!("@FALSE_{}\n", self.return_caller_number);
+        self.output += &format!("@FALSE_{}\n", self.general_return_number);
         self.output += "0;JMP\n";
 
         self.true_or_false();
-        self.output += &format!("(RETURN_ADDRESS_{})\n", self.return_caller_number);
+        self.output += &format!("(RETURN_ADDRESS_{})\n", self.general_return_number);
 
-        // up our return_caller_number
-        self.return_caller_number += 1;
+        // up our general_return_number
+        self.general_return_number += 1;
     }
 
     fn and(&mut self) {

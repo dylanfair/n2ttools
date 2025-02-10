@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-use crate::vm::parser::parse_vm_file;
+use crate::vm::parser::{parse_vm_file, set_up_stack};
 
 pub fn run_vm<P>(path: P, debug: bool)
 where
@@ -17,7 +17,7 @@ where
         return;
     }
 
-    let mut output = String::new();
+    let mut output = set_up_stack();
     for file in files.expect("Should have something after .is_none() check") {
         let parsed_output = parse_vm_file(file, debug);
         if debug {

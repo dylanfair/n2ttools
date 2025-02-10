@@ -1,5 +1,6 @@
 pub mod arithmetic;
 pub mod commands;
+pub mod function;
 pub mod goto;
 pub mod if_goto;
 pub mod label;

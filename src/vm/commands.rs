@@ -25,6 +25,8 @@ impl FromStr for CommandType {
             "label" => Ok(Self::Label),
             "if-goto" => Ok(Self::If),
             "goto" => Ok(Self::Goto),
+            "function" => Ok(Self::Function),
+            "return" => Ok(Self::Return),
             _ => Ok(Self::Arithmetic),
         }
     }
