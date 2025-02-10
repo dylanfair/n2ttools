@@ -92,16 +92,14 @@ where
 
     let output_file = if input_file.is_dir() {
         if input_file == PathBuf::from(".") {
-            let dir = env::current_dir().expect("Should be in some directory");
-            let parent_name = dir.file_name().unwrap().to_str().unwrap();
-
-            let output = format!("{}/{}.asm", dir.display(), parent_name);
-            PathBuf::from(output)
+            let mut current_dir = env::current_dir().expect("Should be in some directory");
+            let parent_name = current_dir.file_name().unwrap().to_str().unwrap();
+            current_dir.push(format!("{}.asm", parent_name));
+            current_dir
         } else {
             let parent_name = input_file.file_name().unwrap().to_str().unwrap();
-
-            let output = format!("{}/{}.asm", input_file.display(), parent_name);
-            PathBuf::from(output)
+            input_file.push(format!("{}.asm", parent_name));
+            input_file
         }
     } else {
         input_file.set_extension("asm");
