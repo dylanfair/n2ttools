@@ -158,6 +158,15 @@ impl Parser {
         };
     }
 
+    pub fn push_d(&mut self) {
+        // Then push to stack
+        self.output += "@SP\n";
+        self.output += "A=M\n";
+        self.output += "M=D\n";
+        self.output += "@SP\n";
+        self.output += "M=M+1\n";
+    }
+
     fn handle_push(&mut self, tokens: Vec<&str>) {
         // RAM[SP++] = D
         // @SP
@@ -235,12 +244,7 @@ impl Parser {
                 panic!("Found an unknown segment: {}", segment);
             }
         }
-        // Then push to stack
-        self.output += "@SP\n";
-        self.output += "A=M\n";
-        self.output += "M=D\n";
-        self.output += "@SP\n";
-        self.output += "M=M+1\n";
+        self.push_d();
     }
 }
 
