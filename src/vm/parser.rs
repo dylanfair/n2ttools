@@ -5,15 +5,6 @@ use std::str::FromStr;
 
 use crate::vm::commands::CommandType;
 
-pub fn set_up_stack() -> String {
-    let mut stack = String::from("@256\nD=A\n@SP\nM=D\n");
-    stack += "@300\nD=A\n@LCL\nM=D\n";
-    stack += "@400\nD=A\n@ARG\nM=D\n";
-    stack += "@3000\nD=A\n@THIS\nM=D\n";
-    stack += "@3010\nD=A\n@THAT\nM=D\n";
-    stack
-}
-
 pub struct Parser {
     pub output: String,
     pub general_return_number: u64,
@@ -24,15 +15,24 @@ pub struct Parser {
 }
 
 impl Parser {
-    fn new(temp_base: u32, file_name: String) -> Self {
+    pub fn new(temp_base: u32) -> Self {
         Parser {
             general_return_number: 0,
             caller_return_number: 0,
             output: String::new(),
             temp_base,
-            file_name,
+            file_name: String::new(),
             function_name: String::new(),
         }
+    }
+
+    pub fn bootstrap(&mut self) {
+        self.output = String::from("@256\nD=A\n@SP\nM=D\n");
+        self.handle_call(vec!["call", "Sys.init", "0"]);
+        // stack += "@300\nD=A\n@LCL\nM=D\n";
+        // stack += "@400\nD=A\n@ARG\nM=D\n";
+        // stack += "@3000\nD=A\n@THIS\nM=D\n";
+        // stack += "@3010\nD=A\n@THAT\nM=D\n";
     }
 
     fn parse_line(&mut self, line: String) {
@@ -246,35 +246,34 @@ impl Parser {
         }
         self.push_d();
     }
-}
 
-pub fn parse_vm_file<P>(file: P, debug: bool) -> String
-where
-    P: AsRef<Path> + std::fmt::Debug,
-{
-    if debug {
-        println!("Parsing {}", file.as_ref().display());
-    }
-    let file_name = file
-        .as_ref()
-        .file_stem()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
-    let input_contents = File::open(file).expect("At this point we should know we have a .vm file");
-
-    let mut parser = Parser::new(5, file_name);
-
-    for line in io::BufReader::new(input_contents)
-        .lines()
-        .map_while(Result::ok)
+    pub fn parse_file<P>(&mut self, file: P, debug: bool)
+    where
+        P: AsRef<Path> + std::fmt::Debug,
     {
         if debug {
-            println!("{}", line);
+            println!("Parsing {}", file.as_ref().display());
         }
-        parser.parse_line(line);
-    }
+        let file_name = file
+            .as_ref()
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
+        self.file_name = file_name;
 
-    parser.output
+        let input_contents =
+            File::open(file).expect("At this point we should know we have a .vm file");
+
+        for line in io::BufReader::new(input_contents)
+            .lines()
+            .map_while(Result::ok)
+        {
+            if debug {
+                println!("{}", line);
+            }
+            self.parse_line(line);
+        }
+    }
 }

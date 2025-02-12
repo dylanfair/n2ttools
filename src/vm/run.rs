@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-use crate::vm::parser::{parse_vm_file, set_up_stack};
+use crate::vm::parser::Parser;
 
 pub fn run_vm<P>(path: P, debug: bool)
 where
@@ -17,21 +17,20 @@ where
         return;
     }
 
-    // let mut output = set_up_stack();
-    let mut output = String::new();
+    let mut parser = Parser::new(5);
+    parser.bootstrap();
     for file in files.expect("Should have something after .is_none() check") {
-        let parsed_output = parse_vm_file(file, debug);
-        if debug {
-            println!("Output is:\n{}", parsed_output);
-        }
-        output += &parsed_output;
+        parser.parse_file(file, debug);
     }
 
     let output_path = create_output_path(&path);
-    let mut file = File::create(output_path).unwrap();
-    file.write_all(output.as_bytes()).unwrap();
+    let mut output_file = File::create(output_path).unwrap();
+    output_file.write_all(parser.output.as_bytes()).unwrap();
 }
 
+/// Return two outputs
+/// first is a Sys.vm path if it exists
+/// second is the rest of the .vm files
 fn valid_files<P>(file: &P) -> Option<Vec<PathBuf>>
 where
     P: AsRef<Path> + std::fmt::Debug + ?Sized,
