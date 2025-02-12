@@ -8,6 +8,15 @@ impl Parser {
         self.push_d();
     }
 
+    fn get_frame(&mut self, n: u64) {
+        self.output += "@R13\n";
+        self.output += "D=M\n";
+        self.output += &format!("@{}\n", n);
+        self.output += "D=D-A\n";
+        self.output += "A=D\n";
+        self.output += "D=M\n";
+    }
+
     pub fn handle_function(&mut self, tokens: Vec<&str>) {
         let fn_name = tokens[1];
         let local_variables = tokens[2].parse::<u32>().unwrap();
@@ -76,28 +85,59 @@ impl Parser {
 
     /// Push local to stack
     /// then go to return address
-    pub fn handle_return(&mut self, tokens: Vec<&str>) {
-        // frame = LCL
+    pub fn handle_return(&mut self) {
+        // frame = LCL - temp variable
+        self.output += "@LCL\n";
+        self.output += "D=M\n";
+        self.output += "@R13\n";
+        self.output += "M=D\n";
+
         // retAddr = *(frame-5)
+        self.get_frame(5);
+        self.output += "@R14\n";
+        self.output += "M=D\n";
+
         // *ARG = pop()
+        // move value from SP to where ARG value is *ARG
+        self.pop_stack();
+        // move to ARG pointer
+        self.output += "@ARG\n";
+        self.output += "A=M\n";
+        self.output += "M=D\n";
+
         // SP = ARG+1
         self.output += "@ARG\n";
         self.output += "D=M\n";
         self.output += "@1\n";
         self.output += "D=D+A\n";
-        self.output += "@SP";
-        self.output += "M=D";
-        // THAT = *(frame-1)
-        // THIS = *(frame-2)
-        // ARG = *(frame-3)
-        // LCL = *(frame-4)
-        // goto retAddr
+        self.output += "@SP\n";
+        self.output += "M=D\n";
 
+        // THAT = *(frame-1)
+        self.get_frame(1);
+        self.output += "@THAT\n";
+        self.output += "M=D\n";
+        // THIS = *(frame-2)
+        self.get_frame(2);
+        self.output += "@THIS\n";
+        self.output += "M=D\n";
+        // ARG = *(frame-3)
+        self.get_frame(3);
+        self.output += "@ARG\n";
+        self.output += "M=D\n";
+        // LCL = *(frame-4)
+        self.get_frame(4);
+        self.output += "@LCL\n";
+        self.output += "M=D\n";
+
+        // goto retAddr
         // file_name.function_name$ret.caller_return_number
-        self.output += &format!(
-            "@{}$ret.{}\n",
-            self.function_name, self.caller_return_number
-        );
+        self.output += "@R14\n";
+        self.output += "A=M\n";
+        // self.output += &format!(
+        //     "@{}$ret.{}\n",
+        //     self.function_name, self.caller_return_number
+        // );
         self.output += "0;JMP\n";
     }
 }

@@ -53,7 +53,7 @@ impl Parser {
             CommandType::If => self.handle_if_goto(tokens),
             CommandType::Goto => self.handle_goto(tokens),
             CommandType::Function => self.handle_function(tokens),
-            CommandType::Return => self.handle_return(tokens),
+            CommandType::Return => self.handle_return(),
             CommandType::Call => self.handle_call(tokens),
         }
     }
