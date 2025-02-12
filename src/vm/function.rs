@@ -9,10 +9,10 @@ impl Parser {
     }
 
     fn get_frame(&mut self, n: u64) {
-        self.output += "@R13\n";
-        self.output += "D=M\n";
         self.output += &format!("@{}\n", n);
-        self.output += "D=D-A\n";
+        self.output += "D=A\n";
+        self.output += "@TEMP_FRAME\n";
+        self.output += "D=M-D\n";
         self.output += "A=D\n";
         self.output += "D=M\n";
     }
@@ -20,27 +20,16 @@ impl Parser {
     pub fn handle_function(&mut self, tokens: Vec<&str>) {
         let fn_name = tokens[1];
         let local_variables = tokens[2].parse::<u32>().unwrap();
-        self.function_name = fn_name.to_string();
 
         // (file_name.function_Name)
         self.output += &format!("({})\n", fn_name);
 
-        // initialize local with 0s
-        for i in 0..local_variables {
-            // get addy of next LCL
-            self.output += "@LCL\n";
-            self.output += "D=M\n";
-            self.output += &format!("@{}\n", i);
-            self.output += "D=D+A\n";
-            self.output += "@R15\n";
-            self.output += "M=D\n";
-
-            // store a 0
-            self.output += &format!("@{}\n", 0);
+        // initialize local stack with 0s
+        for _ in 0..local_variables {
+            // push 0s new SP instead
+            self.output += "@0\n";
             self.output += "D=A\n";
-            self.output += "@R15\n";
-            self.output += "A=M\n";
-            self.output += "M=D\n";
+            self.push_d();
         }
     }
 
@@ -89,12 +78,12 @@ impl Parser {
         // frame = LCL - temp variable
         self.output += "@LCL\n";
         self.output += "D=M\n";
-        self.output += "@R13\n";
+        self.output += "@TEMP_FRAME\n";
         self.output += "M=D\n";
 
         // retAddr = *(frame-5)
         self.get_frame(5);
-        self.output += "@R14\n";
+        self.output += "@TEMP_RET_ADDRESS\n";
         self.output += "M=D\n";
 
         // *ARG = pop()
@@ -132,7 +121,7 @@ impl Parser {
 
         // goto retAddr
         // file_name.function_name$ret.caller_return_number
-        self.output += "@R14\n";
+        self.output += "@TEMP_RET_ADDRESS\n";
         self.output += "A=M\n";
         // self.output += &format!(
         //     "@{}$ret.{}\n",

@@ -28,11 +28,11 @@ impl Parser {
 
     pub fn bootstrap(&mut self) {
         self.output = String::from("@256\nD=A\n@SP\nM=D\n");
+        // self.output += "@300\nD=A\n@LCL\nM=D\n";
+        // self.output += "@400\nD=A\n@ARG\nM=D\n";
+        // self.output += "@3000\nD=A\n@THIS\nM=D\n";
+        // self.output += "@3010\nD=A\n@THAT\nM=D\n";
         self.handle_call(vec!["call", "Sys.init", "0"]);
-        // stack += "@300\nD=A\n@LCL\nM=D\n";
-        // stack += "@400\nD=A\n@ARG\nM=D\n";
-        // stack += "@3000\nD=A\n@THIS\nM=D\n";
-        // stack += "@3010\nD=A\n@THAT\nM=D\n";
     }
 
     fn parse_line(&mut self, line: String) {
