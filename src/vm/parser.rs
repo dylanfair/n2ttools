@@ -33,6 +33,11 @@ impl Parser {
         // self.output += "@3000\nD=A\n@THIS\nM=D\n";
         // self.output += "@3010\nD=A\n@THAT\nM=D\n";
         self.handle_call(vec!["call", "Sys.init", "0"]);
+
+        // self.handle_call(vec!["call", "Main.main", "0"]);
+        // self.output += "(END)\n";
+        // self.output += "@END\n";
+        // self.output += "0;JMP\n";
     }
 
     fn parse_line(&mut self, line: String) {
