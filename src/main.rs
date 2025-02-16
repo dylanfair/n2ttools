@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
 
 mod assembler;
+mod compiler;
 mod vm;
 
 use assembler::run::run_assembler;
+use compiler::run::run_compiler;
 use vm::run::run_vm;
 
 fn main() {
@@ -15,6 +17,9 @@ fn main() {
         }
         Some(Commands::Vm { file, debug }) => {
             run_vm(file, debug);
+        }
+        Some(Commands::Compile { file, debug }) => {
+            run_compiler(file, debug);
         }
         None => {}
     }
@@ -39,6 +44,14 @@ enum Commands {
     },
     /// Takes in a .vm file and returns a .asm file
     Vm {
+        #[arg(default_value = ".")]
+        file: String,
+
+        #[arg(long)]
+        debug: bool,
+    },
+    /// Takes in a .jack file and returns .vm files
+    Compile {
         #[arg(default_value = ".")]
         file: String,
 

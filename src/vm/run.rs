@@ -28,9 +28,7 @@ where
     output_file.write_all(parser.output.as_bytes()).unwrap();
 }
 
-/// Return two outputs
-/// first is a Sys.vm path if it exists
-/// second is the rest of the .vm files
+/// Returns paths to valid .jack files
 fn valid_files<P>(file: &P) -> Option<Vec<PathBuf>>
 where
     P: AsRef<Path> + std::fmt::Debug + ?Sized,

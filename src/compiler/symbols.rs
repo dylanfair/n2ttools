@@ -1,0 +1,23 @@
+pub fn make_symbols_array() -> [String; 19] {
+    [
+        '{'.to_string(),
+        '}'.to_string(),
+        '('.to_string(),
+        ')'.to_string(),
+        '['.to_string(),
+        ']'.to_string(),
+        '.'.to_string(),
+        ','.to_string(),
+        ';'.to_string(),
+        '+'.to_string(),
+        '-'.to_string(),
+        '*'.to_string(),
+        '/'.to_string(),
+        '&'.to_string(),
+        '|'.to_string(),
+        '<'.to_string(),
+        '>'.to_string(),
+        '='.to_string(),
+        '~'.to_string(),
+    ]
+}
