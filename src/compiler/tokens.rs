@@ -99,17 +99,31 @@ impl Compiler {
         };
 
         let mut token = String::new();
+        let mut string_literal = false;
         for char in ready_line.chars() {
             // check for whitespaces
             // push existing token if we have one
             // assign expression booleans if relevant
-            if char.is_whitespace() & !token.is_empty() {
+            if char.is_whitespace() & !token.is_empty() & !string_literal {
                 let token_type = self.make_token(token);
                 self.tokens.push(token_type);
                 token = String::new();
             }
+
+            // We want to keep whitespaces when dealing
+            // with a string literal
             if char.is_whitespace() {
+                // if we are in a string literal,
+                // we do want to push the whitespace
+                if string_literal {
+                    token.push(char);
+                }
                 continue;
+            }
+
+            // our string literal toggle
+            if char == '"' {
+                string_literal = !string_literal;
             }
 
             // deal with general symbols
