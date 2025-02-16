@@ -7,6 +7,8 @@ enum TokenType {
     Keyword,
     Symbol,
     Identifier,
+    StringConstant,
+    IntegerConstant,
 }
 
 #[derive(Debug)]
@@ -30,6 +32,12 @@ impl Display for Token {
             TokenType::Symbol => write!(f, "<symbol> {} </symbol>", self.token_str),
             TokenType::Keyword => write!(f, "<keyword> {} </keyword>", self.token_str),
             TokenType::Identifier => write!(f, "<identifier> {} </identifier>", self.token_str),
+            TokenType::StringConstant => {
+                write!(f, "<stringConstant> {} </stringConstant>", self.token_str)
+            }
+            TokenType::IntegerConstant => {
+                write!(f, "<integerConstant> {} </integerConstant>", self.token_str)
+            }
         }
     }
 }
@@ -59,6 +67,15 @@ impl Compiler {
         }
         if self.keywords_list.contains(&token_str) {
             return Token::new(token_str, TokenType::Keyword);
+        }
+        if token_str.chars().next().unwrap().is_numeric() {
+            return Token::new(token_str, TokenType::IntegerConstant);
+        }
+        if token_str.starts_with('"') {
+            return Token::new(
+                token_str.trim_matches('"').to_string(),
+                TokenType::StringConstant,
+            );
         }
 
         Token::new(token_str, TokenType::Identifier)
@@ -102,7 +119,12 @@ impl Compiler {
                     self.tokens.push(token_type);
                     token = String::new();
                 }
-                let token_type = self.make_token(char.to_string());
+                let char_string = char.to_string();
+                // some symbols need to be converted
+                // otherwise use symbol normally
+                let symbol_token = self.funky_symbols.get(&char_string).unwrap_or(&char_string);
+
+                let token_type = self.make_token(symbol_token.clone());
                 self.tokens.push(token_type);
                 continue;
             }

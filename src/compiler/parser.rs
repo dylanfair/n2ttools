@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, prelude::*, BufRead};
 use std::path::PathBuf;
 
 use crate::compiler::keywords::make_keywords_array;
-use crate::compiler::symbols::make_symbols_array;
+use crate::compiler::symbols::{funky_symbols, make_symbols_array};
 use crate::compiler::tokens::Token;
 
 pub struct Compiler {
@@ -13,6 +14,7 @@ pub struct Compiler {
     pub tokens: Vec<Token>,
     pub multi_line_comment: bool,
     pub symbols_list: [String; 19],
+    pub funky_symbols: HashMap<String, String>,
     pub keywords_list: [String; 21],
 }
 
@@ -25,6 +27,7 @@ impl Compiler {
             tokens: vec![],
             multi_line_comment: false,
             symbols_list: make_symbols_array(),
+            funky_symbols: funky_symbols(),
             keywords_list: make_keywords_array(),
         }
     }
