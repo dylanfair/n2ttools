@@ -13,7 +13,7 @@ pub struct Compiler {
     output: String,
     pub tokens: Vec<Token>,
     pub multi_line_comment: bool,
-    pub symbols_list: [String; 19],
+    pub symbols_list: [String; 23],
     pub funky_symbols: HashMap<String, String>,
     pub keywords_list: [String; 21],
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub fn make_symbols_array() -> [String; 19] {
+pub fn make_symbols_array() -> [String; 23] {
     [
         '{'.to_string(),
         '}'.to_string(),
@@ -21,6 +21,10 @@ pub fn make_symbols_array() -> [String; 19] {
         '>'.to_string(),
         '='.to_string(),
         '~'.to_string(),
+        "&lt;".to_string(),
+        "&gt;".to_string(),
+        "&quot;".to_string(),
+        "&amp;".to_string(),
     ]
 }
 
