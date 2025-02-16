@@ -63,14 +63,15 @@ impl Compiler {
     pub fn compile_file(&mut self) {
         // read in text
         // break out into tokens
-        self.read_file();
+        self.tokenize_file();
         if self.debug {
             println!("{:?}", self.tokens);
         }
+        self.parse_tokens();
         self.save_to_vm();
     }
 
-    fn read_file(&mut self) {
+    fn tokenize_file(&mut self) {
         let input_contents =
             File::open(&self.file_path).expect("At this point we should know we have a .jack file");
 
@@ -84,5 +85,9 @@ impl Compiler {
             }
             self.tokenize(&line);
         }
+    }
+
+    fn parse_tokens(&mut self) {
+        todo!();
     }
 }
