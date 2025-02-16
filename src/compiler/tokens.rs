@@ -70,14 +70,19 @@ impl Compiler {
             return;
         }
 
-        let mut token = String::new();
-        for char in trimmed_line.chars() {
-            // check if we are in a comment
-            // if so we can skip parsing the rest of the line
-            if &token == "//" {
-                return;
-            }
+        // remove inline comments
+        if self.debug {
+            println!("{}", trimmed_line);
+        }
+        let ready_line = if trimmed_line.contains("//") {
+            let (cleaned_line, _) = trimmed_line.split_once("//").unwrap();
+            cleaned_line
+        } else {
+            trimmed_line
+        };
 
+        let mut token = String::new();
+        for char in ready_line.chars() {
             // check for whitespaces
             // push existing token if we have one
             // assign expression booleans if relevant
