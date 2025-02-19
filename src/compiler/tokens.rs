@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::compiler::parser::Compiler;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum TokenType {
     Keyword,
     Symbol,
@@ -11,10 +11,22 @@ pub enum TokenType {
     IntegerConstant,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenType::Keyword => write!(f, "Keyword"),
+            TokenType::Symbol => write!(f, "Symbol"),
+            TokenType::Identifier => write!(f, "Identifier"),
+            TokenType::StringConstant => write!(f, "StringConstant"),
+            TokenType::IntegerConstant => write!(f, "IntegerConstant"),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Token {
-    token_str: String,
-    token_type: TokenType,
+    pub token_str: String,
+    pub token_type: TokenType,
 }
 
 impl Token {
@@ -29,8 +41,8 @@ impl Token {
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.token_type {
-            TokenType::Symbol => write!(f, "<symbol> {} </symbol>", self.token_str),
             TokenType::Keyword => write!(f, "<keyword> {} </keyword>", self.token_str),
+            TokenType::Symbol => write!(f, "<symbol> {} </symbol>", self.token_str),
             TokenType::Identifier => write!(f, "<identifier> {} </identifier>", self.token_str),
             TokenType::StringConstant => {
                 write!(f, "<stringConstant> {} </stringConstant>", self.token_str)

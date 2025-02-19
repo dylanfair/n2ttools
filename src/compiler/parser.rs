@@ -7,15 +7,17 @@ use crate::compiler::keywords::make_keywords_array;
 use crate::compiler::symbols::{funky_symbols, make_symbols_array};
 use crate::compiler::tokens::Token;
 
+#[derive(Clone)]
 pub struct Compiler {
-    file_path: PathBuf,
+    pub file_path: PathBuf,
     pub debug: bool,
-    output: String,
     pub tokens: Vec<Token>,
     pub multi_line_comment: bool,
     pub symbols_list: [String; 23],
     pub funky_symbols: HashMap<String, String>,
     pub keywords_list: [String; 21],
+    pub output: String,
+    pub output_padding: usize,
 }
 
 impl Compiler {
@@ -23,17 +25,18 @@ impl Compiler {
         Compiler {
             file_path,
             debug,
-            output: String::new(),
             tokens: vec![],
             multi_line_comment: false,
             symbols_list: make_symbols_array(),
             funky_symbols: funky_symbols(),
             keywords_list: make_keywords_array(),
+            output: String::new(),
+            output_padding: 0,
         }
     }
 
-    pub fn save_to_vm(&mut self) {
-        let output_path = self.create_output_path();
+    pub fn save_tokens(&mut self) {
+        let output_path = self.create_output_path("Test");
         let mut output_file = File::create(output_path).unwrap();
 
         output_file
@@ -50,10 +53,17 @@ impl Compiler {
         // output_file.write_all(self.output.as_bytes()).unwrap();
     }
 
-    fn create_output_path(&mut self) -> PathBuf {
+    pub fn save_grammar_output(&mut self) {
+        let output_path = self.create_output_path("Grammar");
+        let mut output_file = File::create(output_path).unwrap();
+
+        output_file.write_all(self.output.as_bytes()).unwrap();
+    }
+
+    fn create_output_path(&mut self, suffix: &str) -> PathBuf {
         let mut output_file = self.file_path.clone();
         let file_stem = output_file.file_stem().unwrap();
-        let asm_file = format!("{}Test.xml", file_stem.to_str().unwrap());
+        let asm_file = format!("{}{}.xml", file_stem.to_str().unwrap(), suffix);
         output_file.pop();
         output_file.push(asm_file);
 
@@ -68,7 +78,8 @@ impl Compiler {
             println!("{:?}", self.tokens);
         }
         self.parse_tokens_to_grammar();
-        self.save_to_vm();
+        self.save_tokens();
+        self.save_grammar_output();
     }
 
     fn tokenize_file(&mut self) {
