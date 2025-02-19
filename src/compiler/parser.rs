@@ -67,7 +67,7 @@ impl Compiler {
         if self.debug {
             println!("{:?}", self.tokens);
         }
-        self.parse_tokens();
+        self.parse_tokens_to_grammar();
         self.save_to_vm();
     }
 
@@ -85,9 +85,5 @@ impl Compiler {
             }
             self.tokenize(&line);
         }
-    }
-
-    fn parse_tokens(&mut self) {
-        todo!();
     }
 }

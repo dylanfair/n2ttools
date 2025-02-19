@@ -2,8 +2,8 @@ use std::fmt::Display;
 
 use crate::compiler::parser::Compiler;
 
-#[derive(Debug)]
-enum TokenType {
+#[derive(Debug, Eq, PartialEq)]
+pub enum TokenType {
     Keyword,
     Symbol,
     Identifier,
@@ -11,14 +11,14 @@ enum TokenType {
     IntegerConstant,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Token {
     token_str: String,
     token_type: TokenType,
 }
 
 impl Token {
-    fn new(token_str: String, token_type: TokenType) -> Self {
+    pub fn new(token_str: String, token_type: TokenType) -> Self {
         Token {
             token_str,
             token_type,
