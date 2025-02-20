@@ -258,7 +258,7 @@ impl Compiler {
     pub fn process_expression_list<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut Peekable<I>,
-    ) {
+    ) -> i32 {
         self.save_to_output("<expressionList>");
         self.output_padding += 2;
 
@@ -279,6 +279,7 @@ impl Compiler {
 
         self.output_padding -= 2;
         self.save_to_output("</expressionList>");
+        counter
     }
 
     pub fn process_subroutinecall<'a, I: Iterator<Item = &'a Token>>(
