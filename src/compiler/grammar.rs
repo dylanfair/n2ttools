@@ -4,16 +4,8 @@ use crate::compiler::parser::Compiler;
 
 use super::tokens::{Token, TokenType};
 
-pub enum Statements {
-    Let,
-    If,
-    While,
-    Do,
-    Return,
-}
-
 impl Compiler {
-    fn save_to_output(&mut self, grammar_string: &str) {
+    pub fn save_to_output(&mut self, grammar_string: &str) {
         let mut spaces = String::new();
         let spaces_count = self.output_padding;
         for _ in 0..spaces_count {
@@ -112,6 +104,7 @@ impl Compiler {
         self.process_subroutine_variable_declarations(tokens_iter);
 
         // Then iterate through statements
+        self.process_statements(tokens_iter);
 
         self.output_padding -= 2;
         self.save_to_output("</subroutineBody>");
@@ -239,7 +232,7 @@ impl Compiler {
         }
     }
 
-    fn process_specific<'a, I: Iterator<Item = &'a Token>>(
+    pub fn process_specific<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut I,
         expected_token_str: String,
@@ -259,7 +252,7 @@ impl Compiler {
         self.save_to_output(&next_token.to_string());
     }
 
-    fn process_type<'a, I: Iterator<Item = &'a Token>>(
+    pub fn process_type<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut I,
         expected_token_type: TokenType,
@@ -277,7 +270,7 @@ impl Compiler {
         self.save_to_output(&next_token.to_string());
     }
 
-    fn process_next<'a, I: Iterator<Item = &'a Token>>(&mut self, tokens_iter: &mut I) {
+    pub fn process_next<'a, I: Iterator<Item = &'a Token>>(&mut self, tokens_iter: &mut I) {
         let next_token = tokens_iter.next().unwrap();
         self.save_to_output(&next_token.to_string());
     }
