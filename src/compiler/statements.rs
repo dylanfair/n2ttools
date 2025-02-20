@@ -3,14 +3,13 @@ use std::iter::Peekable;
 use crate::compiler::parser::Compiler;
 use crate::compiler::tokens::Token;
 
-use super::tokens::{self, TokenType};
+use super::tokens::TokenType;
 
 impl Compiler {
     pub fn process_statements<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut Peekable<I>,
     ) {
-        println!("Processing statements");
         self.save_to_output("<statements>");
         self.output_padding += 2;
 
@@ -19,8 +18,6 @@ impl Compiler {
             .expect("Should not be at end of tokens yet");
 
         loop {
-            println!("In the loop now");
-            println!("Token is {}", next_token);
             match next_token.token_str.as_str() {
                 "let" => self.process_let_statement(tokens_iter),
                 "if" => self.process_if_statement(tokens_iter),
@@ -47,9 +44,8 @@ impl Compiler {
 
         // should be a let keyword
         self.process_specific(tokens_iter, String::from("let"), TokenType::Keyword);
-
         // should be var name
-        self.process_var_name(tokens_iter);
+        self.process_type(tokens_iter, TokenType::Identifier);
 
         // need to check for an expression here if we see a '['
         let next_token = tokens_iter.next().unwrap();
@@ -60,6 +56,7 @@ impl Compiler {
             self.process_expression(tokens_iter);
 
             self.process_specific(tokens_iter, String::from("]"), TokenType::Symbol);
+            self.process_specific(tokens_iter, String::from("="), TokenType::Symbol);
         } else if next_token.token_str == "=" {
             // should be =
             self.save_to_output("<symbol> = </symbol>");
@@ -77,25 +74,30 @@ impl Compiler {
         self.save_to_output("</letStatement>");
     }
 
-    pub fn process_var_name<'a, I: Iterator<Item = &'a Token>>(
-        &mut self,
-        tokens_iter: &mut Peekable<I>,
-    ) {
-        let next = tokens_iter.next().unwrap();
-
-        if next.token_type != TokenType::Identifier {
-            panic!("Found '{}' that should have been an Identifier", next);
-        }
-
-        self.save_to_output(&format!("<varName> {} </varName>", next.token_str));
-    }
-
     pub fn process_if_statement<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut Peekable<I>,
     ) {
         self.save_to_output("<ifStatement>");
         self.output_padding += 2;
+
+        // should be a if keyword
+        self.process_specific(tokens_iter, String::from("if"), TokenType::Keyword);
+        self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+        self.process_expression(tokens_iter);
+        self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+        self.process_specific(tokens_iter, String::from("{"), TokenType::Symbol);
+        self.process_statements(tokens_iter);
+        self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
+
+        // now check for else
+        let else_peek = tokens_iter.peek().unwrap();
+        if else_peek.token_str == "else" {
+            self.process_specific(tokens_iter, String::from("else"), TokenType::Keyword);
+            self.process_specific(tokens_iter, String::from("{"), TokenType::Symbol);
+            self.process_statements(tokens_iter);
+            self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
+        }
 
         self.output_padding -= 2;
         self.save_to_output("</ifStatement>");
@@ -107,6 +109,15 @@ impl Compiler {
     ) {
         self.save_to_output("<whileStatement>");
         self.output_padding += 2;
+
+        // should be a while keyword
+        self.process_specific(tokens_iter, String::from("while"), TokenType::Keyword);
+        self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+        self.process_expression(tokens_iter);
+        self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+        self.process_specific(tokens_iter, String::from("{"), TokenType::Symbol);
+        self.process_statements(tokens_iter);
+        self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
 
         self.output_padding -= 2;
         self.save_to_output("</whileStatement>");
@@ -132,6 +143,13 @@ impl Compiler {
         self.save_to_output("<returnStatement>");
         self.output_padding += 2;
 
+        self.process_specific(tokens_iter, String::from("return"), TokenType::Keyword);
+        let peek = tokens_iter.peek().unwrap();
+        if peek.token_str != ";" {
+            self.process_expression(tokens_iter);
+        }
+        self.process_specific(tokens_iter, String::from(";"), TokenType::Symbol);
+
         self.output_padding -= 2;
         self.save_to_output("</returnStatement>");
     }
@@ -146,7 +164,7 @@ impl Compiler {
         self.process_term(tokens_iter);
 
         // check for op and more terms
-        let ops = ["+", "-", "*", "/", "&", "|", "<", ">", "="];
+        let ops = ["+", "-", "*", "/", "&amp;", "|", "&lt;", "&gt;", "="];
         let mut op_peek = tokens_iter.peek().unwrap();
         loop {
             if !ops.contains(&op_peek.token_str.as_str()) {
@@ -245,13 +263,18 @@ impl Compiler {
         self.output_padding += 2;
 
         let mut peek = tokens_iter.peek().unwrap();
+        let mut counter = 0;
         loop {
             if peek.token_str == ")" {
                 // meaning expression list has ended
                 break;
             }
+            if counter > 0 {
+                self.process_specific(tokens_iter, String::from(","), TokenType::Symbol);
+            }
             self.process_expression(tokens_iter);
             peek = tokens_iter.peek().unwrap();
+            counter += 1;
         }
 
         self.output_padding -= 2;

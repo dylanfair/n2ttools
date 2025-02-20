@@ -26,7 +26,7 @@ impl Compiler {
         // class name
         self.process_type(&mut tokens_iter, TokenType::Identifier);
         // {
-        self.process_type(&mut tokens_iter, TokenType::Symbol);
+        self.process_specific(&mut tokens_iter, String::from("{"), TokenType::Symbol);
         // class variable declarations
         self.process_class_variable_declarations(&mut tokens_iter);
 
@@ -37,6 +37,7 @@ impl Compiler {
         // subroutine body
         // variable declarations
 
+        self.process_specific(&mut tokens_iter, String::from("}"), TokenType::Symbol);
         self.output_padding -= 2;
         self.save_to_output("</class>");
     }
@@ -105,6 +106,7 @@ impl Compiler {
 
         // Then iterate through statements
         self.process_statements(tokens_iter);
+        self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
 
         self.output_padding -= 2;
         self.save_to_output("</subroutineBody>");
