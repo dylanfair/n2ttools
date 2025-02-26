@@ -4,5 +4,6 @@ pub mod keywords;
 pub mod parser;
 pub mod run;
 pub mod statements;
+pub mod symbol_table;
 pub mod symbols;
 pub mod tokens;

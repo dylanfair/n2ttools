@@ -4,6 +4,7 @@ use std::io::{self, prelude::*, BufRead};
 use std::path::PathBuf;
 
 use crate::compiler::keywords::make_keywords_array;
+use crate::compiler::symbol_table::SymbolTable;
 use crate::compiler::symbols::{funky_symbols, make_symbols_array};
 use crate::compiler::tokens::Token;
 
@@ -18,6 +19,10 @@ pub struct Compiler {
     pub keywords_list: [String; 21],
     pub output: String,
     pub output_padding: usize,
+    pub code: String,
+    pub class_type: String,
+    pub class_symbol_table: SymbolTable,
+    pub subroutine_symbol_table: SymbolTable,
 }
 
 impl Compiler {
@@ -32,6 +37,10 @@ impl Compiler {
             keywords_list: make_keywords_array(),
             output: String::new(),
             output_padding: 0,
+            code: String::new(),
+            class_type: String::new(),
+            class_symbol_table: SymbolTable::new(),
+            subroutine_symbol_table: SymbolTable::new(),
         }
     }
 
@@ -74,9 +83,6 @@ impl Compiler {
         // read in text
         // break out into tokens
         self.tokenize_file();
-        if self.debug {
-            println!("{:?}", self.tokens);
-        }
         self.parse_tokens_to_grammar();
         self.save_tokens();
         self.save_grammar_output();
@@ -91,9 +97,6 @@ impl Compiler {
             .lines()
             .map_while(Result::ok)
         {
-            if self.debug {
-                println!("{}", line);
-            }
             self.tokenize(&line);
         }
     }

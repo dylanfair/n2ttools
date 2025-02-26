@@ -2,7 +2,10 @@ use std::iter::Peekable;
 
 use crate::compiler::parser::Compiler;
 
-use super::tokens::{Token, TokenType};
+use super::{
+    symbol_table::SymbolTable,
+    tokens::{Token, TokenType},
+};
 
 impl Compiler {
     pub fn save_to_output(&mut self, grammar_string: &str) {
@@ -24,11 +27,15 @@ impl Compiler {
         // class
         self.process_specific(&mut tokens_iter, "class".to_string(), TokenType::Keyword);
         // class name
-        self.process_type(&mut tokens_iter, TokenType::Identifier);
+        self.class_type = self.process_type(&mut tokens_iter, TokenType::Identifier);
         // {
         self.process_specific(&mut tokens_iter, String::from("{"), TokenType::Symbol);
         // class variable declarations
         self.process_class_variable_declarations(&mut tokens_iter);
+        if self.debug {
+            println!("Class Symbol Table:");
+            println!("{:?}", self.class_symbol_table);
+        }
 
         // subroutine declarations
         self.process_subroutine_declarations(&mut tokens_iter);
@@ -59,6 +66,18 @@ impl Compiler {
                         | (p.token_str == "function")
                         | (p.token_str == "method")
                     {
+                        // need to reset symbol table for subroutine
+                        self.subroutine_symbol_table = SymbolTable::new();
+                        if p.token_str == "method" {
+                            self.subroutine_symbol_table.insert_symbol(
+                                String::from("this"),
+                                self.class_type.clone(),
+                                String::from("arg"),
+                                0,
+                            );
+                            self.subroutine_symbol_table.increment_index("arg");
+                        }
+
                         self.save_to_output("<subroutineDec>");
                         self.output_padding += 2;
 
@@ -81,6 +100,11 @@ impl Compiler {
                         self.output_padding -= 2;
                         self.save_to_output("</subroutineDec>");
                         peek = tokens_iter.peek().cloned();
+
+                        if self.debug {
+                            println!("Subroutine symbol table:");
+                            println!("{:?}", self.subroutine_symbol_table);
+                        }
                     } else {
                         return;
                     }
@@ -116,8 +140,8 @@ impl Compiler {
         &mut self,
         tokens_iter: &mut Peekable<I>,
     ) {
-        // if we see 'static' or 'field' then we process next 4 tokens, repeating
-        // static or field
+        // if we see 'var' then we process next 4 tokens, repeating
+        // var
         // type
         // variable name
         // ;
@@ -126,13 +150,31 @@ impl Compiler {
             match peek {
                 Some(p) => {
                     if p.token_str == "var" {
+                        // we want to get for this particular kind (static, field, var arg) index
+                        let mut current_index =
+                            self.subroutine_symbol_table.get_index(&p.token_str);
+
                         self.save_to_output("<varDec>");
                         self.output_padding += 2;
-                        // static or field
-                        self.process_type(tokens_iter, TokenType::Keyword);
+                        // var
+                        let token_kind = self.process_type(tokens_iter, TokenType::Keyword);
                         // variable type
-                        self.process_next(tokens_iter);
-                        self.process_class_variable_names(tokens_iter);
+                        let token_type = self.process_next(tokens_iter);
+                        // names
+                        let token_names = self.process_variable_names(tokens_iter);
+
+                        for name in token_names {
+                            // push into symbol table
+                            self.subroutine_symbol_table.insert_symbol(
+                                name,
+                                token_type.clone(),
+                                token_kind.clone(),
+                                current_index,
+                            );
+
+                            current_index += 1;
+                            self.subroutine_symbol_table.increment_index(&p.token_str);
+                        }
 
                         self.output_padding -= 2;
                         self.save_to_output("</varDec>");
@@ -163,11 +205,25 @@ impl Compiler {
         }
 
         // we have parameters! let's get them
+        let mut current_index = self.subroutine_symbol_table.get_index("arg");
         loop {
             // parameter type
-            self.process_next(tokens_iter);
+            let token_type = self.process_next(tokens_iter);
             // paramter name
-            self.process_type(tokens_iter, TokenType::Identifier);
+            let token_name = self.process_type(tokens_iter, TokenType::Identifier);
+
+            // add to symbol table
+            self.subroutine_symbol_table.insert_symbol(
+                token_name,
+                token_type,
+                String::from("arg"),
+                current_index,
+            );
+
+            // incremnet index
+            current_index += 1;
+            self.subroutine_symbol_table.increment_index("arg");
+
             // look for comma
             let comma_peek = tokens_iter.peek().cloned().unwrap();
             if comma_peek.token_str == "," {
@@ -195,13 +251,30 @@ impl Compiler {
             match peek {
                 Some(p) => {
                     if (p.token_str == "static") | (p.token_str == "field") {
+                        // we want to get for this particular kind (static, field, var arg) index
+                        let mut current_index = self.class_symbol_table.get_index(&p.token_str);
+
                         self.save_to_output("<classVarDec>");
                         self.output_padding += 2;
                         // static or field
-                        self.process_type(tokens_iter, TokenType::Keyword);
+                        let token_kind = self.process_type(tokens_iter, TokenType::Keyword);
                         // variable type
-                        self.process_next(tokens_iter);
-                        self.process_class_variable_names(tokens_iter);
+                        let token_type = self.process_next(tokens_iter);
+                        // variable name
+                        let token_names = self.process_variable_names(tokens_iter);
+
+                        for name in token_names {
+                            // push into symbol table
+                            self.class_symbol_table.insert_symbol(
+                                name,
+                                token_type.clone(),
+                                token_kind.clone(),
+                                current_index,
+                            );
+
+                            current_index += 1;
+                            self.class_symbol_table.increment_index(&p.token_str);
+                        }
 
                         self.output_padding -= 2;
                         self.save_to_output("</classVarDec>");
@@ -217,21 +290,34 @@ impl Compiler {
         }
     }
 
-    fn process_class_variable_names<'a, I: Iterator<Item = &'a Token>>(
+    fn process_variable_names<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut Peekable<I>,
-    ) {
-        self.process_type(tokens_iter, TokenType::Identifier);
+    ) -> Vec<String> {
+        let mut names = vec![];
 
-        let next_symbol = tokens_iter.next().unwrap();
-        if next_symbol.token_str == "," {
-            self.save_to_output(&next_symbol.to_string());
-            self.process_class_variable_names(tokens_iter);
-        } else if next_symbol.token_str == ";" {
-            self.save_to_output(&next_symbol.to_string());
-        } else {
-            panic!("Found a symbol we shouldn't be seeing {}", next_symbol);
+        let name = self.process_type(tokens_iter, TokenType::Identifier);
+        names.push(name);
+
+        let mut next_symbol = tokens_iter.next().unwrap();
+        loop {
+            if next_symbol.token_str == "," {
+                // deal with comma
+                self.save_to_output(&next_symbol.to_string());
+                // deal with name
+                let name = self.process_type(tokens_iter, TokenType::Identifier);
+                names.push(name);
+                // check for next token
+                next_symbol = tokens_iter.next().unwrap();
+            } else if next_symbol.token_str == ";" {
+                self.save_to_output(&next_symbol.to_string());
+                break;
+            } else {
+                panic!("Found a symbol we shouldn't be seeing {}", next_symbol);
+            }
         }
+
+        names
     }
 
     pub fn process_specific<'a, I: Iterator<Item = &'a Token>>(
@@ -258,7 +344,7 @@ impl Compiler {
         &mut self,
         tokens_iter: &mut I,
         expected_token_type: TokenType,
-    ) {
+    ) -> String {
         let next_token = tokens_iter.next().unwrap();
 
         if next_token.token_type != expected_token_type {
@@ -270,11 +356,16 @@ impl Compiler {
             )
         }
         self.save_to_output(&next_token.to_string());
+        next_token.token_str.clone()
     }
 
-    pub fn process_next<'a, I: Iterator<Item = &'a Token>>(&mut self, tokens_iter: &mut I) {
+    pub fn process_next<'a, I: Iterator<Item = &'a Token>>(
+        &mut self,
+        tokens_iter: &mut I,
+    ) -> String {
         let next_token = tokens_iter.next().unwrap();
         self.save_to_output(&next_token.to_string());
+        next_token.token_str.clone()
     }
 }
 
