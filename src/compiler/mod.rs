@@ -1,3 +1,4 @@
+pub mod code_gen;
 pub mod files;
 pub mod grammar;
 pub mod keywords;

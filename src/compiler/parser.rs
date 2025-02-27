@@ -45,7 +45,7 @@ impl Compiler {
     }
 
     pub fn save_tokens(&mut self) {
-        let output_path = self.create_output_path("Test");
+        let output_path = self.create_output_path("Test", "xml");
         let mut output_file = File::create(output_path).unwrap();
 
         output_file
@@ -63,16 +63,23 @@ impl Compiler {
     }
 
     pub fn save_grammar_output(&mut self) {
-        let output_path = self.create_output_path("Grammar");
+        let output_path = self.create_output_path("Grammar", "xml");
         let mut output_file = File::create(output_path).unwrap();
 
         output_file.write_all(self.output.as_bytes()).unwrap();
     }
 
-    fn create_output_path(&mut self, suffix: &str) -> PathBuf {
+    pub fn save_vm_code(&mut self) {
+        let output_path = self.create_output_path("", "vm");
+        let mut output_file = File::create(output_path).unwrap();
+
+        output_file.write_all(self.code.as_bytes()).unwrap();
+    }
+
+    fn create_output_path(&mut self, suffix: &str, extension: &str) -> PathBuf {
         let mut output_file = self.file_path.clone();
         let file_stem = output_file.file_stem().unwrap();
-        let asm_file = format!("{}{}.xml", file_stem.to_str().unwrap(), suffix);
+        let asm_file = format!("{}{}.{}", file_stem.to_str().unwrap(), suffix, extension);
         output_file.pop();
         output_file.push(asm_file);
 
@@ -86,6 +93,7 @@ impl Compiler {
         self.parse_tokens_to_grammar();
         self.save_tokens();
         self.save_grammar_output();
+        self.save_vm_code();
     }
 
     fn tokenize_file(&mut self) {

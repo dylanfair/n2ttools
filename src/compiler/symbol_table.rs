@@ -1,10 +1,10 @@
 use anyhow::anyhow;
 use std::{collections::BTreeMap, str::FromStr};
 
-use crate::{assembler::symbol_table, compiler::parser::Compiler};
+use crate::compiler::parser::Compiler;
 
 #[derive(Clone, Debug)]
-enum SymbolCategory {
+pub enum SymbolCategory {
     Field,
     Static,
     Var,
@@ -12,7 +12,7 @@ enum SymbolCategory {
 }
 
 #[derive(Clone, Debug)]
-struct SymbolCategoryError;
+pub struct SymbolCategoryError;
 
 impl FromStr for SymbolCategory {
     type Err = SymbolCategoryError;
@@ -30,10 +30,10 @@ impl FromStr for SymbolCategory {
 
 #[derive(Clone, Debug)]
 pub struct Symbol {
-    name: String,
-    var_type: String,
-    kind: SymbolCategory,
-    index: u16,
+    pub name: String,
+    pub var_type: String,
+    pub kind: SymbolCategory,
+    pub index: u16,
 }
 
 impl Symbol {
@@ -114,5 +114,31 @@ impl SymbolTable {
             index: symbol_index,
         };
         self.table.insert(symbol_name, symbol);
+    }
+
+    pub fn get_symbol(&mut self, symbol_name: &str) -> Option<&Symbol> {
+        self.table.get(symbol_name)
+    }
+}
+
+impl Compiler {
+    pub fn get_symbol(&mut self, symbol_name: &str) -> Option<&Symbol> {
+        let subroutine_symbol = self.subroutine_symbol_table.get_symbol(symbol_name);
+        if subroutine_symbol.is_none() {
+            let class_symbol = self.class_symbol_table.get_symbol(symbol_name);
+            return class_symbol;
+        }
+        subroutine_symbol
+    }
+
+    pub fn check_for_symbol(&mut self, symbol_name: &str) -> bool {
+        let subroutine_symbol = self.subroutine_symbol_table.get_symbol(symbol_name);
+        if subroutine_symbol.is_none() {
+            let class_symbol = self.class_symbol_table.get_symbol(symbol_name);
+            if class_symbol.is_none() {
+                return false;
+            }
+        }
+        true
     }
 }

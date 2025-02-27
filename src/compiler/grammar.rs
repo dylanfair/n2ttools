@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use crate::compiler::parser::Compiler;
 
 use super::{
-    symbol_table::SymbolTable,
+    symbol_table::{SymbolCategory, SymbolTable},
     tokens::{Token, TokenType},
 };
 
@@ -87,7 +87,8 @@ impl Compiler {
                         self.process_next(tokens_iter);
 
                         // name of the function
-                        self.process_type(tokens_iter, TokenType::Identifier);
+                        let name = self.process_type(tokens_iter, TokenType::Identifier);
+                        self.code += &format!("function {}.{}", self.class_type, name);
 
                         // parameters
                         self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
@@ -127,6 +128,13 @@ impl Compiler {
 
         // first check for var declarations
         self.process_subroutine_variable_declarations(tokens_iter);
+        let mut vars = 0;
+        for symbol in self.subroutine_symbol_table.table.values() {
+            if let SymbolCategory::Var = symbol.kind {
+                vars += 1;
+            }
+        }
+        self.code += &format!(" {}\n", vars);
 
         // Then iterate through statements
         self.process_statements(tokens_iter);
@@ -325,7 +333,7 @@ impl Compiler {
         tokens_iter: &mut I,
         expected_token_str: String,
         expected_token_type: TokenType,
-    ) {
+    ) -> String {
         let next_token = tokens_iter.next().unwrap();
         let expected_token = Token::new(expected_token_str, expected_token_type);
 
@@ -338,6 +346,7 @@ impl Compiler {
             )
         }
         self.save_to_output(&next_token.to_string());
+        next_token.token_str.clone()
     }
 
     pub fn process_type<'a, I: Iterator<Item = &'a Token>>(

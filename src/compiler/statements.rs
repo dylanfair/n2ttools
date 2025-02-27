@@ -149,6 +149,7 @@ impl Compiler {
             self.process_expression(tokens_iter);
         }
         self.process_specific(tokens_iter, String::from(";"), TokenType::Symbol);
+        self.compile_return();
 
         self.output_padding -= 2;
         self.save_to_output("</returnStatement>");
@@ -161,17 +162,24 @@ impl Compiler {
         self.save_to_output("<expression>");
         self.output_padding += 2;
 
+        // push term in
         self.process_term(tokens_iter);
 
         // check for op and more terms
         let ops = ["+", "-", "*", "/", "&amp;", "|", "&lt;", "&gt;", "="];
+        let math_ops = ["+", "-", "*", "/"];
         let mut op_peek = tokens_iter.peek().unwrap();
         loop {
             if !ops.contains(&op_peek.token_str.as_str()) {
                 break;
             }
-            self.process_type(tokens_iter, TokenType::Symbol);
+            let operator = self.process_type(tokens_iter, TokenType::Symbol);
+            // push second term
             self.process_term(tokens_iter);
+            // work operator
+            if math_ops.contains(&operator.as_str()) {
+                self.compile_math_operator(&operator);
+            }
             op_peek = tokens_iter.peek().unwrap();
         }
 
@@ -205,6 +213,9 @@ impl Compiler {
             | (next.token_type == TokenType::Keyword)
         {
             self.save_to_output(&next.to_string());
+            if next.token_type == TokenType::IntegerConstant {
+                self.compile_constant(&next.token_str);
+            }
         }
 
         // for handling our expression if it's wrapped in parenthesis
@@ -289,24 +300,33 @@ impl Compiler {
         // do
         self.process_type(tokens_iter, TokenType::Keyword);
         // class, var or subroutine Name
-        self.process_type(tokens_iter, TokenType::Identifier);
+        let mut name = self.process_type(tokens_iter, TokenType::Identifier);
+        let mut expression_count = 0;
+
+        if self.check_for_symbol(&name) {
+            // using a method call from a varName
+            expression_count += 1;
+        }
 
         let peek = tokens_iter.peek().unwrap();
         match peek.token_str.as_str() {
             "(" => {
                 self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                self.process_expression_list(tokens_iter);
+                expression_count = self.process_expression_list(tokens_iter);
+                expression_count += 1; // implies we are using a method of the current object
                 self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
             }
             "." => {
-                self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
-                self.process_type(tokens_iter, TokenType::Identifier);
+                name += &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
+                name += &self.process_type(tokens_iter, TokenType::Identifier);
                 self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                self.process_expression_list(tokens_iter);
+                expression_count = self.process_expression_list(tokens_iter);
                 self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
             }
             _ => {}
         }
         self.process_specific(tokens_iter, String::from(";"), TokenType::Symbol);
+        self.write_code(&format!("call {} {}", name, expression_count));
+        self.write_code("pop temp 0");
     }
 }
