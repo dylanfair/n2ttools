@@ -88,6 +88,9 @@ impl Compiler {
 
                         // name of the function
                         let name = self.process_type(tokens_iter, TokenType::Identifier);
+                        // begin our function definition
+                        // don't add \n yet, we need to add number of
+                        // local vars in process_subroutine_body
                         self.code += &format!("function {}.{}", self.class_type, name);
 
                         // parameters
@@ -128,12 +131,14 @@ impl Compiler {
 
         // first check for var declarations
         self.process_subroutine_variable_declarations(tokens_iter);
+        // then use our symbol table to find number of var declarations
         let mut vars = 0;
         for symbol in self.subroutine_symbol_table.table.values() {
             if let SymbolCategory::Var = symbol.kind {
                 vars += 1;
             }
         }
+        // now we add that number in!
         self.code += &format!(" {}\n", vars);
 
         // Then iterate through statements
