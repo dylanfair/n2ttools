@@ -370,6 +370,7 @@ impl Compiler {
         if self.check_for_symbol(&name) {
             // using a method call from a varName
             expression_count += 1;
+            name = self.get_symbol(&name).unwrap().var_type.clone();
         }
 
         let peek = tokens_iter.peek().unwrap();
@@ -388,8 +389,9 @@ impl Compiler {
                 name += &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
                 name += &self.process_type(tokens_iter, TokenType::Identifier);
                 self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                expression_count = self.process_expression_list(tokens_iter);
+                expression_count += self.process_expression_list(tokens_iter);
                 self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+                self.write_code("push local 0");
             }
             _ => {}
         }
