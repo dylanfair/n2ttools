@@ -78,6 +78,9 @@ impl Compiler {
                             self.subroutine_symbol_table.increment_index("arg");
                         }
 
+                        // also reset the branch counts
+                        self.branches.reset();
+
                         self.save_to_output("<subroutineDec>");
                         self.output_padding += 2;
 
@@ -88,10 +91,6 @@ impl Compiler {
 
                         // name of the function
                         let name = self.process_type(tokens_iter, TokenType::Identifier);
-                        // begin our function definition
-                        // don't add \n yet, we need to add number of
-                        // local vars in process_subroutine_body
-                        self.code += &format!("function {}.{}", self.class_type, name);
 
                         // parameters
                         self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
@@ -99,7 +98,7 @@ impl Compiler {
                         self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
 
                         // subroutineBody
-                        self.process_subroutine_body(tokens_iter);
+                        self.process_subroutine_body(tokens_iter, &name, &p.token_str);
 
                         self.output_padding -= 2;
                         self.save_to_output("</subroutineDec>");
@@ -123,6 +122,8 @@ impl Compiler {
     fn process_subroutine_body<'a, I: Iterator<Item = &'a Token>>(
         &mut self,
         tokens_iter: &mut Peekable<I>,
+        name: &str,
+        function_type: &str,
     ) {
         self.save_to_output("<subroutineBody>");
         self.output_padding += 2;
@@ -138,8 +139,22 @@ impl Compiler {
                 vars += 1;
             }
         }
-        // now we add that number in!
-        self.code += &format!(" {}\n", vars);
+
+        // begin our function definition
+        self.write_code(&format!("function {}.{} {}", self.class_type, name, vars));
+
+        // add some code for if dealing with a constructor
+        if function_type == "constructor" {
+            let number_of_class_fields = self.class_symbol_table.table.len();
+            self.write_code(&format!("push constant {}", number_of_class_fields));
+            self.write_code("call Memory.alloc 1");
+            self.write_code("pop pointer 0");
+        }
+
+        if function_type == "method" {
+            self.write_code("push argument 0");
+            self.write_code("pop pointer 0");
+        }
 
         // Then iterate through statements
         self.process_statements(tokens_iter);

@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::{self, prelude::*, BufRead};
 use std::path::PathBuf;
 
+use crate::compiler::branches::Branches;
 use crate::compiler::keywords::make_keywords_array;
 use crate::compiler::symbol_table::SymbolTable;
 use crate::compiler::symbols::{funky_symbols, make_symbols_array};
@@ -23,6 +24,7 @@ pub struct Compiler {
     pub class_type: String,
     pub class_symbol_table: SymbolTable,
     pub subroutine_symbol_table: SymbolTable,
+    pub branches: Branches,
 }
 
 impl Compiler {
@@ -41,6 +43,7 @@ impl Compiler {
             class_type: String::new(),
             class_symbol_table: SymbolTable::new(),
             subroutine_symbol_table: SymbolTable::new(),
+            branches: Branches::new(),
         }
     }
 
@@ -70,7 +73,7 @@ impl Compiler {
     }
 
     pub fn save_vm_code(&mut self) {
-        let output_path = self.create_output_path("", "vm");
+        let output_path = self.create_output_path("_me", "vm");
         let mut output_file = File::create(output_path).unwrap();
 
         output_file.write_all(self.code.as_bytes()).unwrap();

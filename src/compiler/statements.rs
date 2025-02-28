@@ -45,7 +45,13 @@ impl Compiler {
         // should be a let keyword
         self.process_specific(tokens_iter, String::from("let"), TokenType::Keyword);
         // should be var name
-        self.process_type(tokens_iter, TokenType::Identifier);
+        let var_name = self.process_type(tokens_iter, TokenType::Identifier);
+
+        let var_name_symbol = self.get_symbol(&var_name);
+        let symbol = match var_name_symbol {
+            Some(symbol) => symbol.clone(),
+            None => panic!("Could not find {} in our symbol table", var_name),
+        };
 
         // need to check for an expression here if we see a '['
         let next_token = tokens_iter.next().unwrap();
@@ -66,6 +72,8 @@ impl Compiler {
 
         // parse expression
         self.process_expression(tokens_iter);
+        // now pop our var
+        self.pop_symbol(&symbol);
 
         // parse ;
         self.process_specific(tokens_iter, String::from(";"), TokenType::Symbol);
@@ -78,25 +86,40 @@ impl Compiler {
         &mut self,
         tokens_iter: &mut Peekable<I>,
     ) {
+        // keep a static counter here for this if loop
+        let current_if_counter = self.branches.if_counter;
+        self.branches.if_counter += 1;
+
         self.save_to_output("<ifStatement>");
         self.output_padding += 2;
 
         // should be a if keyword
         self.process_specific(tokens_iter, String::from("if"), TokenType::Keyword);
         self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+
         self.process_expression(tokens_iter);
+        self.write_code(&format!("if-goto IF_TRUE{}", current_if_counter));
+        self.write_code(&format!("goto IF_FALSE{}", current_if_counter));
+
         self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
         self.process_specific(tokens_iter, String::from("{"), TokenType::Symbol);
+
+        self.write_code(&format!("label IF_TRUE{}", current_if_counter));
         self.process_statements(tokens_iter);
         self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
 
         // now check for else
         let else_peek = tokens_iter.peek().unwrap();
         if else_peek.token_str == "else" {
+            self.write_code(&format!("goto IF_END{}", current_if_counter));
             self.process_specific(tokens_iter, String::from("else"), TokenType::Keyword);
             self.process_specific(tokens_iter, String::from("{"), TokenType::Symbol);
+            self.write_code(&format!("label IF_FALSE{}", current_if_counter));
             self.process_statements(tokens_iter);
             self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
+            self.write_code(&format!("label IF_END{}", current_if_counter));
+        } else {
+            self.write_code(&format!("label IF_FALSE{}", current_if_counter));
         }
 
         self.output_padding -= 2;
@@ -107,17 +130,28 @@ impl Compiler {
         &mut self,
         tokens_iter: &mut Peekable<I>,
     ) {
+        let current_while_counter = self.branches.while_counter;
+        self.branches.while_counter += 1;
+
         self.save_to_output("<whileStatement>");
         self.output_padding += 2;
 
         // should be a while keyword
         self.process_specific(tokens_iter, String::from("while"), TokenType::Keyword);
+        self.write_code(&format!("label WHILE_EXP{}", current_while_counter));
+
         self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
         self.process_expression(tokens_iter);
         self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+        self.write_code("not");
+        self.write_code(&format!("if-goto WHILE_END{}", current_while_counter));
+
         self.process_specific(tokens_iter, String::from("{"), TokenType::Symbol);
         self.process_statements(tokens_iter);
         self.process_specific(tokens_iter, String::from("}"), TokenType::Symbol);
+        self.write_code(&format!("goto WHILE_EXP{}", current_while_counter));
+
+        self.write_code(&format!("label WHILE_END{}", current_while_counter));
 
         self.output_padding -= 2;
         self.save_to_output("</whileStatement>");
@@ -147,6 +181,10 @@ impl Compiler {
         let peek = tokens_iter.peek().unwrap();
         if peek.token_str != ";" {
             self.process_expression(tokens_iter);
+        } else {
+            // if there are no expressions present
+            // we push constant 0
+            self.write_code("push constant 0");
         }
         self.process_specific(tokens_iter, String::from(";"), TokenType::Symbol);
         self.compile_return();
@@ -167,7 +205,6 @@ impl Compiler {
 
         // check for op and more terms
         let ops = ["+", "-", "*", "/", "&amp;", "|", "&lt;", "&gt;", "="];
-        let math_ops = ["+", "-", "*", "/"];
         let mut op_peek = tokens_iter.peek().unwrap();
         loop {
             if !ops.contains(&op_peek.token_str.as_str()) {
@@ -177,7 +214,7 @@ impl Compiler {
             // push second term
             self.process_term(tokens_iter);
             // work operator
-            if math_ops.contains(&operator.as_str()) {
+            if ops.contains(&operator.as_str()) {
                 self.compile_math_operator(&operator);
             }
             op_peek = tokens_iter.peek().unwrap();
@@ -216,6 +253,9 @@ impl Compiler {
             if next.token_type == TokenType::IntegerConstant {
                 self.compile_constant(&next.token_str);
             }
+            if next.token_type == TokenType::Keyword {
+                self.compile_keyword(&next.token_str);
+            }
         }
 
         // for handling our expression if it's wrapped in parenthesis
@@ -230,6 +270,7 @@ impl Compiler {
         if (next.token_str == "-") | (next.token_str == "~") {
             self.save_to_output(&next.to_string());
             self.process_term(tokens_iter);
+            self.compile_unary_op(&next.token_str);
         }
 
         // if we get an identifier, we have to see if it becomes either
@@ -238,6 +279,13 @@ impl Compiler {
         // or subroutineCall
         if next.token_type == TokenType::Identifier {
             self.save_to_output(&next.to_string());
+            let mut name = next.token_str.clone();
+            let mut expression_count = 0;
+
+            if self.check_for_symbol(&name) {
+                // using a method call from a varName
+                expression_count += 1;
+            }
 
             let peek = tokens_iter.peek().unwrap();
             match peek.token_str.as_str() {
@@ -248,17 +296,33 @@ impl Compiler {
                 }
                 "(" => {
                     self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                    self.process_expression_list(tokens_iter);
+                    expression_count += self.process_expression_list(tokens_iter);
+                    expression_count += 1; // implies we are using a method of the current object
                     self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+
+                    self.write_code(&format!("call {} {}", name, expression_count));
                 }
                 "." => {
-                    self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
-                    self.process_type(tokens_iter, TokenType::Identifier);
+                    name +=
+                        &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
+                    name += &self.process_type(tokens_iter, TokenType::Identifier);
                     self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                    self.process_expression_list(tokens_iter);
+                    expression_count = self.process_expression_list(tokens_iter);
                     self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+
+                    self.write_code(&format!("call {} {}", name, expression_count));
                 }
-                _ => {}
+                _ => {
+                    let symbol = self.get_symbol(&name);
+                    let symbol = match symbol {
+                        Some(symbol) => symbol.clone(),
+                        None => panic!(
+                            "Could not find the following in our symbol tables: '{}'",
+                            name
+                        ),
+                    };
+                    self.push_symbol(&symbol);
+                }
             }
         }
 
@@ -312,9 +376,13 @@ impl Compiler {
         match peek.token_str.as_str() {
             "(" => {
                 self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+                name = format!("{}.{}", self.class_type, name);
                 expression_count = self.process_expression_list(tokens_iter);
                 expression_count += 1; // implies we are using a method of the current object
                 self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+
+                // if using a method of the current object, need to push in this
+                self.write_code("push pointer 0");
             }
             "." => {
                 name += &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);

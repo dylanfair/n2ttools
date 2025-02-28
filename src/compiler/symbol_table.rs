@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
 use crate::compiler::parser::Compiler;
 
@@ -24,6 +24,17 @@ impl FromStr for SymbolCategory {
             "var" => Ok(SymbolCategory::Var),
             "arg" => Ok(SymbolCategory::Arg),
             _ => Err(SymbolCategoryError),
+        }
+    }
+}
+
+impl Display for SymbolCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Field => write!(f, "this"),
+            Self::Static => write!(f, "static"),
+            Self::Var => write!(f, "local"),
+            Self::Arg => write!(f, "argument"),
         }
     }
 }

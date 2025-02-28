@@ -1,3 +1,4 @@
+pub mod branches;
 pub mod code_gen;
 pub mod files;
 pub mod grammar;

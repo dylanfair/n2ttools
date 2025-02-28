@@ -14,6 +14,9 @@ pub fn run_compiler(path: String, debug: bool) {
     }
 
     for file in files.expect("Should have something after .is_none() check") {
+        if debug {
+            println!("Working on file {}", file.display());
+        }
         let mut compiler = Compiler::new(file, debug);
         compiler.compile_file();
     }
