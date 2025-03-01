@@ -365,12 +365,17 @@ impl Compiler {
         self.process_type(tokens_iter, TokenType::Keyword);
         // class, var or subroutine Name
         let mut name = self.process_type(tokens_iter, TokenType::Identifier);
+        let og_name = name.clone();
+        let mut method_call = false;
         let mut expression_count = 0;
 
-        if self.check_for_symbol(&name) {
-            // using a method call from a varName
+        // we want to change the name from the variable name
+        // to the type if this is the case
+        let symbol_check = self.get_symbol(&name);
+        if let Some(symbol) = symbol_check {
             expression_count += 1;
-            name = self.get_symbol(&name).unwrap().var_type.clone();
+            name = symbol.var_type.clone();
+            method_call = true;
         }
 
         let peek = tokens_iter.peek().unwrap();
@@ -391,7 +396,12 @@ impl Compiler {
                 self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
                 expression_count += self.process_expression_list(tokens_iter);
                 self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
-                self.write_code("push local 0");
+
+                if method_call {
+                    // symbol table shouldn't have changed by this point
+                    let symbol = self.get_symbol(&og_name).unwrap().clone();
+                    self.push_symbol(&symbol);
+                }
             }
             _ => {}
         }

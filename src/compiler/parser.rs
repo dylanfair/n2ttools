@@ -73,7 +73,7 @@ impl Compiler {
     }
 
     pub fn save_vm_code(&mut self) {
-        let output_path = self.create_output_path("_me", "vm");
+        let output_path = self.create_output_path("", "vm");
         let mut output_file = File::create(output_path).unwrap();
 
         output_file.write_all(self.code.as_bytes()).unwrap();
