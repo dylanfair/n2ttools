@@ -27,6 +27,22 @@ impl Compiler {
         self.write_code(&format!("push constant {}", constant));
     }
 
+    pub fn compile_string(&mut self, string: &str) {
+        let string_len = string.len();
+        self.write_code(&format!("push constant {}", string_len));
+        self.write_code("call String.new 1");
+
+        for c in string.chars() {
+            let char_code = self
+                .character_set
+                .get(&c.to_string())
+                .expect("Shouldn't see other chars");
+
+            self.write_code(&format!("push constant {}", char_code));
+            self.write_code("call String.appendChar 2");
+        }
+    }
+
     pub fn compile_return(&mut self) {
         self.write_code("return");
     }

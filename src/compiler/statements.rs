@@ -250,11 +250,11 @@ impl Compiler {
             | (next.token_type == TokenType::Keyword)
         {
             self.save_to_output(&next.to_string());
-            if next.token_type == TokenType::IntegerConstant {
-                self.compile_constant(&next.token_str);
-            }
-            if next.token_type == TokenType::Keyword {
-                self.compile_keyword(&next.token_str);
+            match next.token_type {
+                TokenType::IntegerConstant => self.compile_constant(&next.token_str),
+                TokenType::Keyword => self.compile_keyword(&next.token_str),
+                TokenType::StringConstant => self.compile_string(&next.token_str),
+                _ => panic!("Shouldn't see any other token type here: '{}'", next),
             }
         }
 
@@ -279,27 +279,60 @@ impl Compiler {
         // or subroutineCall
         if next.token_type == TokenType::Identifier {
             self.save_to_output(&next.to_string());
-            let mut name = next.token_str.clone();
-            let mut expression_count = 0;
 
-            if self.check_for_symbol(&name) {
-                // using a method call from a varName
+            let mut name = next.token_str.clone();
+            let og_name = name.clone();
+            let mut expression_count = 0;
+            let mut method_call = false;
+
+            let symbol_check = self.get_symbol(&og_name);
+            if let Some(symbol) = symbol_check {
                 expression_count += 1;
+                name = symbol.var_type.clone();
+                method_call = true;
             }
 
             let peek = tokens_iter.peek().unwrap();
             match peek.token_str.as_str() {
                 "[" => {
+                    // dealing with an array
+                    // let x = arr[2]
+                    // where arr is local 0
+                    // and x is local 1
+                    //
+                    // array part
+                    // push local 0
+                    // push constant 2
+                    // add
+                    // pop pointer 1
+                    //
+                    // x part
+                    // push that 0
+                    // pop local 1
+                    //
+                    // let arr[expression1] = expression2
+                    // push local 0 (arr)
+                    // compile expresssion1
+                    // add
+                    // pop pointer 1
+                    // compile expression2
+                    // pop temp 0
+                    // pop pointer 1
+                    // push temp 0
+                    // pop that 0
                     self.process_specific(tokens_iter, String::from("["), TokenType::Symbol);
                     self.process_expression(tokens_iter);
                     self.process_specific(tokens_iter, String::from("]"), TokenType::Symbol);
                 }
                 "(" => {
                     self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+                    name = format!("{}.{}", self.class_type, name);
                     expression_count += self.process_expression_list(tokens_iter);
                     expression_count += 1; // implies we are using a method of the current object
                     self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
 
+                    // if using a method of the current object, need to push in this
+                    self.write_code("push pointer 0");
                     self.write_code(&format!("call {} {}", name, expression_count));
                 }
                 "." => {
@@ -310,10 +343,15 @@ impl Compiler {
                     expression_count = self.process_expression_list(tokens_iter);
                     self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
 
+                    if method_call {
+                        // symbol table shouldn't have changed by this point
+                        let symbol = self.get_symbol(&og_name).unwrap().clone();
+                        self.push_symbol(&symbol);
+                    }
                     self.write_code(&format!("call {} {}", name, expression_count));
                 }
                 _ => {
-                    let symbol = self.get_symbol(&name);
+                    let symbol = self.get_symbol(&og_name);
                     let symbol = match symbol {
                         Some(symbol) => symbol.clone(),
                         None => panic!(
@@ -365,13 +403,13 @@ impl Compiler {
         self.process_type(tokens_iter, TokenType::Keyword);
         // class, var or subroutine Name
         let mut name = self.process_type(tokens_iter, TokenType::Identifier);
-        let og_name = name.clone();
+        let og_name = name.clone(); // for use later if name gets changed
         let mut method_call = false;
         let mut expression_count = 0;
 
         // we want to change the name from the variable name
         // to the type if this is the case
-        let symbol_check = self.get_symbol(&name);
+        let symbol_check = self.get_symbol(&og_name);
         if let Some(symbol) = symbol_check {
             expression_count += 1;
             name = symbol.var_type.clone();

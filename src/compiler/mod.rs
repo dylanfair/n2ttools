@@ -1,4 +1,5 @@
 pub mod branches;
+pub mod char_set;
 pub mod code_gen;
 pub mod files;
 pub mod grammar;

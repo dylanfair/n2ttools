@@ -4,6 +4,7 @@ use std::io::{self, prelude::*, BufRead};
 use std::path::PathBuf;
 
 use crate::compiler::branches::Branches;
+use crate::compiler::char_set::create_character_set;
 use crate::compiler::keywords::make_keywords_array;
 use crate::compiler::symbol_table::SymbolTable;
 use crate::compiler::symbols::{funky_symbols, make_symbols_array};
@@ -18,6 +19,7 @@ pub struct Compiler {
     pub symbols_list: [String; 23],
     pub funky_symbols: HashMap<String, String>,
     pub keywords_list: [String; 21],
+    pub character_set: HashMap<String, u16>,
     pub output: String,
     pub output_padding: usize,
     pub code: String,
@@ -37,6 +39,7 @@ impl Compiler {
             symbols_list: make_symbols_array(),
             funky_symbols: funky_symbols(),
             keywords_list: make_keywords_array(),
+            character_set: create_character_set(),
             output: String::new(),
             output_padding: 0,
             code: String::new(),
