@@ -55,11 +55,16 @@ impl Compiler {
 
         // need to check for an expression here if we see a '['
         let next_token = tokens_iter.next().unwrap();
+        let mut array_handling = false;
         if next_token.token_str == "[" {
+            array_handling = true;
             self.save_to_output("<symbol> [ </symbol>");
 
             // parse expression
             self.process_expression(tokens_iter);
+            // push array in
+            self.push_symbol(&symbol);
+            self.write_code("add");
 
             self.process_specific(tokens_iter, String::from("]"), TokenType::Symbol);
             self.process_specific(tokens_iter, String::from("="), TokenType::Symbol);
@@ -72,8 +77,16 @@ impl Compiler {
 
         // parse expression
         self.process_expression(tokens_iter);
-        // now pop our var
-        self.pop_symbol(&symbol);
+
+        if array_handling {
+            self.write_code("pop temp 0");
+            self.write_code("pop pointer 1");
+            self.write_code("push temp 0");
+            self.write_code("pop that 0");
+        } else {
+            // now pop our var
+            self.pop_symbol(&symbol);
+        }
 
         // parse ;
         self.process_specific(tokens_iter, String::from(";"), TokenType::Symbol);
@@ -320,9 +333,18 @@ impl Compiler {
                     // pop pointer 1
                     // push temp 0
                     // pop that 0
+                    let symbol = self.get_symbol(&og_name).unwrap().clone();
+
                     self.process_specific(tokens_iter, String::from("["), TokenType::Symbol);
                     self.process_expression(tokens_iter);
                     self.process_specific(tokens_iter, String::from("]"), TokenType::Symbol);
+
+                    self.push_symbol(&symbol);
+                    self.write_code("add");
+
+                    // unsure
+                    self.write_code("pop pointer 1");
+                    self.write_code("push that 0");
                 }
                 "(" => {
                     self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
