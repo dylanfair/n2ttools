@@ -42,7 +42,7 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
-    /// Takes in a .vm file and returns a .asm file
+    /// Takes in a .vm file or folder of .vm files and returns a single .asm file
     Vm {
         #[arg(default_value = ".")]
         file: String,
@@ -50,7 +50,7 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
-    /// Takes in a .jack file and returns .vm files
+    /// Takes in a .jack file or folder of .jack files and returns corresponding .vm files
     Compile {
         #[arg(default_value = ".")]
         file: String,
