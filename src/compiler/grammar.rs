@@ -145,7 +145,12 @@ impl Compiler {
 
         // add some code for if dealing with a constructor
         if function_type == "constructor" {
-            let number_of_class_fields = self.class_symbol_table.table.len();
+            let mut number_of_class_fields = 0;
+            for symbol in self.class_symbol_table.table.values() {
+                if let SymbolCategory::Field = symbol.kind {
+                    number_of_class_fields += 1;
+                }
+            }
             self.write_code(&format!("push constant {}", number_of_class_fields));
             self.write_code("call Memory.alloc 1");
             self.write_code("pop pointer 0");

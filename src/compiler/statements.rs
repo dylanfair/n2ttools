@@ -347,29 +347,31 @@ impl Compiler {
                     self.write_code("push that 0");
                 }
                 "(" => {
+                    // if using a method of the current object, need to push in this
+                    self.write_code("push pointer 0");
+
                     self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
                     name = format!("{}.{}", self.class_type, name);
                     expression_count += self.process_expression_list(tokens_iter);
                     expression_count += 1; // implies we are using a method of the current object
                     self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
 
-                    // if using a method of the current object, need to push in this
-                    self.write_code("push pointer 0");
                     self.write_code(&format!("call {} {}", name, expression_count));
                 }
                 "." => {
-                    name +=
-                        &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
-                    name += &self.process_type(tokens_iter, TokenType::Identifier);
-                    self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                    expression_count = self.process_expression_list(tokens_iter);
-                    self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
-
                     if method_call {
                         // symbol table shouldn't have changed by this point
                         let symbol = self.get_symbol(&og_name).unwrap().clone();
                         self.push_symbol(&symbol);
                     }
+
+                    name +=
+                        &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
+                    name += &self.process_type(tokens_iter, TokenType::Identifier);
+                    self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+                    expression_count += self.process_expression_list(tokens_iter);
+                    self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
+
                     self.write_code(&format!("call {} {}", name, expression_count));
                 }
                 _ => {
@@ -441,27 +443,27 @@ impl Compiler {
         let peek = tokens_iter.peek().unwrap();
         match peek.token_str.as_str() {
             "(" => {
+                // if using a method of the current object, need to push in this
+                self.write_code("push pointer 0");
+
                 self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
                 name = format!("{}.{}", self.class_type, name);
                 expression_count = self.process_expression_list(tokens_iter);
                 expression_count += 1; // implies we are using a method of the current object
                 self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
-
-                // if using a method of the current object, need to push in this
-                self.write_code("push pointer 0");
             }
             "." => {
-                name += &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
-                name += &self.process_type(tokens_iter, TokenType::Identifier);
-                self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
-                expression_count += self.process_expression_list(tokens_iter);
-                self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
-
                 if method_call {
                     // symbol table shouldn't have changed by this point
                     let symbol = self.get_symbol(&og_name).unwrap().clone();
                     self.push_symbol(&symbol);
                 }
+
+                name += &self.process_specific(tokens_iter, String::from("."), TokenType::Symbol);
+                name += &self.process_type(tokens_iter, TokenType::Identifier);
+                self.process_specific(tokens_iter, String::from("("), TokenType::Symbol);
+                expression_count += self.process_expression_list(tokens_iter);
+                self.process_specific(tokens_iter, String::from(")"), TokenType::Symbol);
             }
             _ => {}
         }
