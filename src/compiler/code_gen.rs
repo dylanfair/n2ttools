@@ -54,7 +54,7 @@ impl Compiler {
                 self.write_code("not");
             }
             "false" => self.write_code("push constant 0"),
-            "null" => todo!(),
+            "null" => self.write_code("push constant 0"),
             "this" => self.write_code("push pointer 0"), // when returning this
             _ => panic!(
                 "Came across an unfamiliar keyword we shouldn't see: '{}'",

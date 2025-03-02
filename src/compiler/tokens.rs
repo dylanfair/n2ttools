@@ -139,7 +139,7 @@ impl Compiler {
             }
 
             // deal with general symbols
-            if self.symbols_list.contains(&char.to_string()) {
+            if self.symbols_list.contains(&char.to_string()) & !string_literal {
                 if !token.is_empty() {
                     let token_type = self.make_token(token);
                     self.tokens.push(token_type);

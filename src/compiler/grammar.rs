@@ -364,10 +364,13 @@ impl Compiler {
 
         if *next_token != expected_token {
             panic!(
-                "{}\nThe token should be a '{}'. Found '{}'",
+                "{}\nThe token should be a '{}'. Found '{}'\nNext tokens are:\n{:?}\n{:?}\n{:?}",
                 self.file_path.display(),
                 expected_token,
-                next_token
+                next_token,
+                tokens_iter.next(),
+                tokens_iter.next(),
+                tokens_iter.next()
             )
         }
         self.save_to_output(&next_token.to_string());

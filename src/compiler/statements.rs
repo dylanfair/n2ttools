@@ -406,10 +406,13 @@ impl Compiler {
                 // meaning expression list has ended
                 break;
             }
+
             if counter > 0 {
                 self.process_specific(tokens_iter, String::from(","), TokenType::Symbol);
             }
+
             self.process_expression(tokens_iter);
+
             peek = tokens_iter.peek().unwrap();
             counter += 1;
         }
