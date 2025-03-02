@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use std::{collections::BTreeMap, fmt::Display, str::FromStr};
 
 use crate::compiler::parser::Compiler;
@@ -41,16 +40,14 @@ impl Display for SymbolCategory {
 
 #[derive(Clone, Debug)]
 pub struct Symbol {
-    pub name: String,
     pub var_type: String,
     pub kind: SymbolCategory,
     pub index: u16,
 }
 
 impl Symbol {
-    pub fn new(name: String, var_type: String, kind: SymbolCategory, index: u16) -> Self {
+    pub fn new(var_type: String, kind: SymbolCategory, index: u16) -> Self {
         Symbol {
-            name,
             var_type,
             kind,
             index,
@@ -118,12 +115,11 @@ impl SymbolTable {
         symbol_kind: String,
         symbol_index: u16,
     ) {
-        let symbol = Symbol {
-            name: symbol_name.clone(),
-            var_type: symbol_type,
-            kind: SymbolCategory::from_str(&symbol_kind).unwrap(),
-            index: symbol_index,
-        };
+        let symbol = Symbol::new(
+            symbol_type,
+            SymbolCategory::from_str(&symbol_kind).unwrap(),
+            symbol_index,
+        );
         self.table.insert(symbol_name, symbol);
     }
 
@@ -140,16 +136,5 @@ impl Compiler {
             return class_symbol;
         }
         subroutine_symbol
-    }
-
-    pub fn check_for_symbol(&mut self, symbol_name: &str) -> bool {
-        let subroutine_symbol = self.subroutine_symbol_table.get_symbol(symbol_name);
-        if subroutine_symbol.is_none() {
-            let class_symbol = self.class_symbol_table.get_symbol(symbol_name);
-            if class_symbol.is_none() {
-                return false;
-            }
-        }
-        true
     }
 }
